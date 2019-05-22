@@ -24,6 +24,7 @@ package com.owncloud.android.operations;
 import android.accounts.Account;
 import android.content.Context;
 import android.text.TextUtils;
+import android.util.Log;
 import android.webkit.MimeTypeMap;
 
 import com.owncloud.android.datamodel.DecryptedFolderMetadata;
@@ -205,8 +206,9 @@ public class DownloadFileOperation extends RemoteOperation {
         }
         Log_OC.i(TAG, "Download of " + file.getRemotePath() + " to " + getSavePath() + ": " +
                 result.getLogMessage());
-
+        Log.i("By Mohammed", "Try downloading a file");
         return result;
+
     }
 
     public void cancel() {
