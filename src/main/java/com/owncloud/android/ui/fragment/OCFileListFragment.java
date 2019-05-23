@@ -29,6 +29,7 @@ import android.accounts.AccountManager;
 import android.accounts.AuthenticatorException;
 import android.accounts.OperationCanceledException;
 import android.app.Activity;
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncTask;
@@ -37,6 +38,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.ActionMode;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -47,6 +49,7 @@ import android.view.ViewGroup;
 import android.widget.AbsListView;
 import android.widget.PopupMenu;
 import android.widget.RelativeLayout;
+import android.widget.Toast;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.snackbar.Snackbar;
@@ -108,13 +111,20 @@ import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 import org.parceler.Parcels;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 
 import javax.inject.Inject;
 
@@ -130,11 +140,14 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import static com.owncloud.android.datamodel.OCFile.ROOT_PATH;
+import static java.lang.Thread.sleep;
 
 /**
  * A Fragment that lists all files and folders in a given path.
  * TODO refactor to get rid of direct dependency on FileDisplayActivity
  */
+
+
 public class OCFileListFragment extends ExtendedListFragment implements
         OCFileListFragmentInterface,
         OCFileListBottomSheetActions,
@@ -169,6 +182,15 @@ public class OCFileListFragment extends ExtendedListFragment implements
     private static final String DIALOG_CREATE_DOCUMENT = "DIALOG_CREATE_DOCUMENT";
 
     private static final int SINGLE_SELECTION = 1;
+
+    ProgressDialog pd1;
+    ProgressDialog pd2;
+    int count = 0;
+    String UNTIDyMatrix = null;
+    String AUTHENTICATION_URL = "http://192.168.100.88/nextcloud/security/authenticate.php?matrix=";
+    String authenticationResult = null;
+    boolean authenticated = false;
+
 
     @Inject AppPreferences preferences;
     @Inject UserAccountManager accountManager;
@@ -1058,8 +1080,51 @@ public class OCFileListFragment extends ExtendedListFragment implements
             }
             case R.id.action_download_file:
             case R.id.action_sync_file: {
-                mContainerActivity.getFileOperationsHelper().syncFiles(checkedFiles);
-                exitSelectionMode();
+                // By Mohammed, main file display page
+//                if(true) { // prevent downloading
+//                    Log.i("By Mohammed", "I tried to download this file, main page that lists all the files");
+//                    AccountManager am = (AccountManager) getActivity().getSystemService(Context.ACCOUNT_SERVICE);
+//                    Account account = ((FileActivity) mContainerActivity).getAccount();
+//                    am.removeAccount(account, null, null);
+//                    Intent start = new Intent(getActivity(), FileDisplayActivity.class);
+//                    start.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+//                    startActivity(start);
+//                    return true;
+//                }
+//                else{
+
+
+
+
+                if(count == 0)
+                {}
+                count++;
+                new GenerateUNTIDyMatrix().execute("http://192.168.100.88/nextcloud/security/index.php");
+                try {
+                    UNTIDyMatrix = new GetUNTIDyMatrix().execute("http://192.168.100.88/nextcloud/security/showJson.php").get();
+                    Log.i("By Mohammed","I was able to get result in the fragment and this prevent any future downloads" + UNTIDyMatrix);
+                } catch (ExecutionException e) {
+                    e.printStackTrace();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                AUTHENTICATION_URL += String.valueOf(UNTIDyMatrix);
+                count++;
+                new Authenticate().execute(AUTHENTICATION_URL);
+                try {
+                    authenticationResult = new Authenticate().execute(AUTHENTICATION_URL).get();
+                    Log.i("By Mohammed","The authentication result is" + authenticationResult);
+                } catch (ExecutionException e) {
+                    e.printStackTrace();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+
+                Log.i("By Mohammed", "The number of requests is: " + count);
+
+
+                //mContainerActivity.getFileOperationsHelper().syncFiles(checkedFiles);
+                //exitSelectionMode();
                 return true;
             }
             case R.id.action_cancel_sync: {
@@ -1069,6 +1134,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
             case R.id.action_favorite: {
                 mContainerActivity.getFileOperationsHelper().toggleFavoriteFiles(checkedFiles, true);
                 return true;
+
             }
             case R.id.action_unset_favorite: {
                 mContainerActivity.getFileOperationsHelper().toggleFavoriteFiles(checkedFiles, false);
@@ -1710,4 +1776,256 @@ public class OCFileListFragment extends ExtendedListFragment implements
         return event != null && !TextUtils.isEmpty(event.getSearchQuery()) && event.getSearchType() != null
             && event.getUnsetType() != null;
     }
+
+
+
+
+    private class GetUNTIDyMatrix extends AsyncTask<String,String,String> {
+
+        protected void onPreExecute() {
+            super.onPreExecute();
+            pd1 = new ProgressDialog(getActivity());
+            pd1.setMessage("Authenticating with UNTIDy matrix");
+            pd1.setCancelable(false);
+            pd1.show();
+
+            Log.i("ByMohammed","on PreExecute");
+        }
+
+        protected String doInBackground(String... params) {
+
+
+            HttpURLConnection connection = null;
+            BufferedReader reader = null;
+            Log.i("ByMohammed","doInBackground");
+            try {
+
+                URL url = new URL(params[0]);
+                connection = (HttpURLConnection) url.openConnection();
+                connection.connect();
+
+                Log.i("ByMohammed","got Connected");
+                InputStream stream = connection.getInputStream();
+
+                reader = new BufferedReader(new InputStreamReader(stream));
+
+                StringBuffer buffer = new StringBuffer();
+                String line = "";
+
+                while ((line = reader.readLine()) != null) {
+                    buffer.append(line+"\n");
+                    Log.d("ByMohammed ", "Response  " + line);   //here u ll get whole response...... :-)
+
+                }
+                Log.i("ByMohammed","buffer returned");
+                return buffer.toString();
+
+
+            } catch (MalformedURLException e) {
+                e.printStackTrace();
+                Log.i("ByMohammed","MalformedURLException");
+            } catch (IOException e) {
+                e.printStackTrace();
+                Log.i("ByMohammed","IOException");
+            } finally {
+                if (connection != null) {
+                    connection.disconnect();
+                }
+                try {
+                    if (reader != null) {
+                        reader.close();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(String result) {
+            super.onPostExecute(result);
+            if(pd2.isShowing())
+                pd2.dismiss();
+            if (pd1.isShowing()){
+                Runnable progressRunnable = new Runnable() {
+
+                    @Override
+                    public void run() {
+
+                        pd1.dismiss();
+                        Toast.makeText(getActivity(), "Authentication matrix has been downloaded, it will be used next time to authenticate",
+                                       Toast.LENGTH_LONG).show();
+                    }
+                };
+                Handler pdCanceller = new Handler();
+                pdCanceller.postDelayed(progressRunnable, 3000);
+
+
+            }
+
+        }
+    }
+    private class GenerateUNTIDyMatrix extends AsyncTask<String,String,String> {
+
+        protected void onPreExecute() {
+            super.onPreExecute();
+
+            pd2 = new ProgressDialog(getActivity());
+            pd2.setMessage("Request the server to generate authentication matrix");
+            pd2.setCancelable(false);
+            pd2.show();
+            Log.i("ByMohammed","on PreExecute - GAF");
+        }
+
+        protected String doInBackground(String... params) {
+
+
+            HttpURLConnection connection = null;
+
+            int code;
+            Log.i("ByMohammed","doInBackground");
+            try {
+                URL url = new URL(params[0]);
+                connection = (HttpURLConnection) url.openConnection();
+                connection.connect();
+
+                code = connection.getResponseCode();
+
+                Log.i("ByMohammed","got Connected & receieved the response code - GAF");
+
+
+                Log.i("ByMohammed","buffer returned");
+
+                return String.valueOf(code);
+
+
+            } catch (MalformedURLException e) {
+                e.printStackTrace();
+                Log.i("ByMohammed","MalformedURLException");
+            } catch (IOException e) {
+                e.printStackTrace();
+                Log.i("ByMohammed","IOException");
+            } finally {
+                if (connection != null) {
+                    connection.disconnect();
+                }
+
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(String result) {
+            super.onPostExecute(result);
+            if (pd2.isShowing()){
+                Runnable progressRunnable = new Runnable() {
+
+                    @Override
+                    public void run() {
+                        pd2.dismiss();
+                        Toast.makeText(getActivity(), result,
+                                       Toast.LENGTH_LONG).show();
+                    }
+                };
+                Handler pdCanceller = new Handler();
+                pdCanceller.postDelayed(progressRunnable, 3000);
+
+
+            }
+            Toast.makeText(getActivity(), result,
+                           Toast.LENGTH_LONG).show();
+        }
+    }
+    private class Authenticate extends AsyncTask<String,String,String> {
+
+        protected void onPreExecute() {
+            super.onPreExecute();
+
+            pd2 = new ProgressDialog(getActivity());
+            pd2.setMessage("Request the server to generate authentication matrix");
+            pd2.setCancelable(false);
+            pd2.show();
+            Log.i("ByMohammed","on PreExecute - GAF");
+        }
+
+        protected String doInBackground(String... params) {
+
+
+            HttpURLConnection connection = null;
+            BufferedReader reader = null;
+            Log.i("ByMohammed","doInBackground");
+            try {
+
+                URL url = new URL(params[0]);
+                connection = (HttpURLConnection) url.openConnection();
+                connection.connect();
+
+                Log.i("ByMohammed","got Connected");
+                InputStream stream = connection.getInputStream();
+
+                reader = new BufferedReader(new InputStreamReader(stream));
+
+                StringBuffer buffer = new StringBuffer();
+                String line = "";
+
+                while ((line = reader.readLine()) != null) {
+                    buffer.append(line+"\n");
+                    Log.d("ByMohammed ", "Response  " + line);   //here u ll get whole response...... :-)
+
+                }
+                Log.i("ByMohammed","buffer returned");
+                return buffer.toString();
+
+
+            } catch (MalformedURLException e) {
+                e.printStackTrace();
+                Log.i("ByMohammed","MalformedURLException");
+            } catch (IOException e) {
+                e.printStackTrace();
+                Log.i("ByMohammed","IOException");
+            } finally {
+                if (connection != null) {
+                    connection.disconnect();
+                }
+                try {
+                    if (reader != null) {
+                        reader.close();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(String result) {
+            super.onPostExecute(result);
+            if(pd2.isShowing())
+                pd2.dismiss();
+            if (pd1.isShowing()){
+                Runnable progressRunnable = new Runnable() {
+
+                    @Override
+                    public void run() {
+
+                        pd1.dismiss();
+                        Toast.makeText(getActivity(),result ,
+                                       Toast.LENGTH_LONG).show();
+                    }
+                };
+                Handler pdCanceller = new Handler();
+                pdCanceller.postDelayed(progressRunnable, 3000);
+
+
+            }
+
+        }
+    }
+
 }
+
+
+
+
