@@ -185,6 +185,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
     ProgressDialog pd1;
     ProgressDialog pd2;
+    ProgressDialog pd3;
     int count = 0;
     String UNTIDyMatrix = null;
     String AUTHENTICATION_URL = "http://192.168.100.88/nextcloud/security/authenticate.php?matrix=";
@@ -1096,36 +1097,60 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
 
 
-                if(count == 0)
-                {}
-                count++;
-                new GenerateUNTIDyMatrix().execute("http://192.168.100.88/nextcloud/security/index.php");
-                try {
-                    UNTIDyMatrix = new GetUNTIDyMatrix().execute("http://192.168.100.88/nextcloud/security/showJson.php").get();
-                    Log.i("By Mohammed","I was able to get result in the fragment and this prevent any future downloads" + UNTIDyMatrix);
-                } catch (ExecutionException e) {
-                    e.printStackTrace();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+                if(count == 0) { // if no UNITDYMatrix were downloaded before
+                    count++;
+                    new GenerateUNTIDyMatrix().execute("http://192.168.100.88/nextcloud/security/index.php");
+                    try {
+                        UNTIDyMatrix = new GetUNTIDyMatrix().execute("http://192.168.100.88/nextcloud/security/showJson.php").get();
+                        Log.i("By Mohammed", "UNTIDyMatrix was downloaded for the first time, No download restricrtions ");
+                    } catch (ExecutionException e) {
+                        e.printStackTrace();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    Log.i("By Mohammed", "The download file number is: " + count);
+                    mContainerActivity.getFileOperationsHelper().syncFiles(checkedFiles);
+                    exitSelectionMode();
+                    return true;
+
                 }
-                AUTHENTICATION_URL += String.valueOf(UNTIDyMatrix);
-                count++;
-                new Authenticate().execute(AUTHENTICATION_URL);
-                try {
-                    authenticationResult = new Authenticate().execute(AUTHENTICATION_URL).get();
-                    Log.i("By Mohammed","The authentication result is" + authenticationResult);
-                } catch (ExecutionException e) {
-                    e.printStackTrace();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+                else{ // if we already have an UNTIDyMatrix
+                    Log.i("By Mohammed", "Since we already have an UNTIDyMatrix, we will check it against what we have with the server");
+
+                    AUTHENTICATION_URL += String.valueOf(UNTIDyMatrix); // get the matrix created previously
+
+                    new Authenticate().execute(AUTHENTICATION_URL);
+                    try {
+                        authenticationResult = new Authenticate().execute(AUTHENTICATION_URL).get();
+                        Log.i("By Mohammed","The authentication returned result is" + authenticationResult);
+                    } catch (ExecutionException e) {
+                        e.printStackTrace();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    Log.i("By Mohammed", "The download file number is: " + count);
+                    if(authenticationResult.contains("Matrices match"))
+                    {
+                        count++;
+                        Log.i("By Mohammed", "Authentication succeeded");
+                        mContainerActivity.getFileOperationsHelper().syncFiles(checkedFiles);
+                        exitSelectionMode();
+                        return true;
+                    }
+                    else
+                    {
+                        Log.i("By Mohammed", "Authentication failed");
+                        return true;
+                    }
+
                 }
 
-                Log.i("By Mohammed", "The number of requests is: " + count);
+
 
 
                 //mContainerActivity.getFileOperationsHelper().syncFiles(checkedFiles);
                 //exitSelectionMode();
-                return true;
+                //return true;
             }
             case R.id.action_cancel_sync: {
                 ((FileDisplayActivity) mContainerActivity).cancelTransference(checkedFiles);
@@ -1788,8 +1813,6 @@ public class OCFileListFragment extends ExtendedListFragment implements
             pd1.setMessage("Authenticating with UNTIDy matrix");
             pd1.setCancelable(false);
             pd1.show();
-
-            Log.i("ByMohammed","on PreExecute");
         }
 
         protected String doInBackground(String... params) {
@@ -1797,14 +1820,13 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
             HttpURLConnection connection = null;
             BufferedReader reader = null;
-            Log.i("ByMohammed","doInBackground");
+
             try {
 
                 URL url = new URL(params[0]);
                 connection = (HttpURLConnection) url.openConnection();
                 connection.connect();
 
-                Log.i("ByMohammed","got Connected");
                 InputStream stream = connection.getInputStream();
 
                 reader = new BufferedReader(new InputStreamReader(stream));
@@ -1814,10 +1836,19 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
                 while ((line = reader.readLine()) != null) {
                     buffer.append(line+"\n");
-                    Log.d("ByMohammed ", "Response  " + line);   //here u ll get whole response...... :-)
+                    Log.d("ByMohammed ", "UNTIDyMatrix: " + line);   //here u ll get whole response...... :-)
 
                 }
-                Log.i("ByMohammed","buffer returned");
+
+                try
+                {
+                    Thread.sleep( 2 * 1000 );
+                }
+                catch ( InterruptedException e )
+                {
+                    Log.e( "MAINACTIVITY-ERROR", e.getMessage());
+
+                }
                 return buffer.toString();
 
 
@@ -1845,26 +1876,19 @@ public class OCFileListFragment extends ExtendedListFragment implements
         @Override
         protected void onPostExecute(String result) {
             super.onPostExecute(result);
-            if(pd2.isShowing())
-                pd2.dismiss();
+
             if (pd1.isShowing()){
-                Runnable progressRunnable = new Runnable() {
-
-                    @Override
-                    public void run() {
-
                         pd1.dismiss();
-                        Toast.makeText(getActivity(), "Authentication matrix has been downloaded, it will be used next time to authenticate",
+                        Toast.makeText(getActivity(), "UNTIDyMatrix has been downloaded, it will be used to authenticate the next download",
                                        Toast.LENGTH_LONG).show();
                     }
-                };
-                Handler pdCanceller = new Handler();
-                pdCanceller.postDelayed(progressRunnable, 3000);
+
+
 
 
             }
 
-        }
+
     }
     private class GenerateUNTIDyMatrix extends AsyncTask<String,String,String> {
 
@@ -1875,7 +1899,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
             pd2.setMessage("Request the server to generate authentication matrix");
             pd2.setCancelable(false);
             pd2.show();
-            Log.i("ByMohammed","on PreExecute - GAF");
+
         }
 
         protected String doInBackground(String... params) {
@@ -1884,7 +1908,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
             HttpURLConnection connection = null;
 
             int code;
-            Log.i("ByMohammed","doInBackground");
+
             try {
                 URL url = new URL(params[0]);
                 connection = (HttpURLConnection) url.openConnection();
@@ -1892,10 +1916,6 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
                 code = connection.getResponseCode();
 
-                Log.i("ByMohammed","got Connected & receieved the response code - GAF");
-
-
-                Log.i("ByMohammed","buffer returned");
 
                 return String.valueOf(code);
 
@@ -1918,23 +1938,11 @@ public class OCFileListFragment extends ExtendedListFragment implements
         @Override
         protected void onPostExecute(String result) {
             super.onPostExecute(result);
-            if (pd2.isShowing()){
-                Runnable progressRunnable = new Runnable() {
+            if (pd2.isShowing())
+                pd2.dismiss();
+                Toast.makeText(getActivity(), "UNTIDyMatrix has been generated on the server. It will be downloaded soon",
+                               Toast.LENGTH_LONG).show();
 
-                    @Override
-                    public void run() {
-                        pd2.dismiss();
-                        Toast.makeText(getActivity(), result,
-                                       Toast.LENGTH_LONG).show();
-                    }
-                };
-                Handler pdCanceller = new Handler();
-                pdCanceller.postDelayed(progressRunnable, 3000);
-
-
-            }
-            Toast.makeText(getActivity(), result,
-                           Toast.LENGTH_LONG).show();
         }
     }
     private class Authenticate extends AsyncTask<String,String,String> {
@@ -1942,11 +1950,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
         protected void onPreExecute() {
             super.onPreExecute();
 
-            pd2 = new ProgressDialog(getActivity());
-            pd2.setMessage("Request the server to generate authentication matrix");
-            pd2.setCancelable(false);
-            pd2.show();
-            Log.i("ByMohammed","on PreExecute - GAF");
+
         }
 
         protected String doInBackground(String... params) {
@@ -1954,14 +1958,12 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
             HttpURLConnection connection = null;
             BufferedReader reader = null;
-            Log.i("ByMohammed","doInBackground");
             try {
 
                 URL url = new URL(params[0]);
                 connection = (HttpURLConnection) url.openConnection();
                 connection.connect();
 
-                Log.i("ByMohammed","got Connected");
                 InputStream stream = connection.getInputStream();
 
                 reader = new BufferedReader(new InputStreamReader(stream));
@@ -1974,8 +1976,8 @@ public class OCFileListFragment extends ExtendedListFragment implements
                     Log.d("ByMohammed ", "Response  " + line);   //here u ll get whole response...... :-)
 
                 }
-                Log.i("ByMohammed","buffer returned");
-                return buffer.toString();
+
+                return String.valueOf(buffer.toString());
 
 
             } catch (MalformedURLException e) {
@@ -2002,24 +2004,10 @@ public class OCFileListFragment extends ExtendedListFragment implements
         @Override
         protected void onPostExecute(String result) {
             super.onPostExecute(result);
-            if(pd2.isShowing())
-                pd2.dismiss();
-            if (pd1.isShowing()){
-                Runnable progressRunnable = new Runnable() {
 
-                    @Override
-                    public void run() {
+                Toast.makeText(getActivity(), result,
+                               Toast.LENGTH_LONG).show();
 
-                        pd1.dismiss();
-                        Toast.makeText(getActivity(),result ,
-                                       Toast.LENGTH_LONG).show();
-                    }
-                };
-                Handler pdCanceller = new Handler();
-                pdCanceller.postDelayed(progressRunnable, 3000);
-
-
-            }
 
         }
     }
