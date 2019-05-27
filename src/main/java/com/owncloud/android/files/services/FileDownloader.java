@@ -36,6 +36,7 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
 import android.os.Process;
+import android.util.Log;
 import android.util.Pair;
 
 import com.owncloud.android.R;
@@ -144,6 +145,7 @@ public class FileDownloader extends Service
         // add AccountsUpdatedListener
         AccountManager am = AccountManager.get(getApplicationContext());
         am.addOnAccountsUpdatedListener(this, null, false);
+
     }
 
 
@@ -178,11 +180,14 @@ public class FileDownloader extends Service
         Log_OC.d(TAG, "Starting command with id " + startId);
 
         startForeground(FOREGROUND_SERVICE_ID, mNotification);
+        // By Mohammed, here should be the logout code
+
 
         if (intent == null || !intent.hasExtra(EXTRA_ACCOUNT) || !intent.hasExtra(EXTRA_FILE)) {
             Log_OC.e(TAG, "Not enough information provided in intent");
             return START_NOT_STICKY;
         } else {
+
             final Account account = intent.getParcelableExtra(EXTRA_ACCOUNT);
             final OCFile file = intent.getParcelableExtra(EXTRA_FILE);
             final String behaviour = intent.getStringExtra(OCFileListFragment.DOWNLOAD_BEHAVIOUR);
@@ -694,6 +699,7 @@ public class FileDownloader extends Service
         added.putExtra(EXTRA_LINKED_TO_PATH, linkedToRemotePath);
         added.setPackage(getPackageName());
         sendStickyBroadcast(added);
+
     }
 
     /**

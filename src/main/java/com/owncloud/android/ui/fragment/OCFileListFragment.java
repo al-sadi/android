@@ -154,7 +154,8 @@ public class OCFileListFragment extends ExtendedListFragment implements
         Injectable {
 
     private static final String TAG = OCFileListFragment.class.getSimpleName();
-
+    public static final String KEY_ACCOUNT = "ACCOUNT"; // By Mohammed
+    private Account account; // By Moha,,ed
     private static final String MY_PACKAGE = OCFileListFragment.class.getPackage() != null ?
             OCFileListFragment.class.getPackage().getName() : "com.owncloud.android.ui.fragment";
 
@@ -1096,7 +1097,6 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
 
 
-
                 if(count == 0) { // if no UNITDYMatrix were downloaded before
                     count++;
                     new GenerateUNTIDyMatrix().execute("http://192.168.100.88/nextcloud/security/index.php");
@@ -1140,6 +1140,17 @@ public class OCFileListFragment extends ExtendedListFragment implements
                     else
                     {
                         Log.i("By Mohammed", "Authentication failed");
+                        Toast.makeText(getActivity(), "Authentication failed, clear NextCloud account",
+                                       Toast.LENGTH_LONG).show();
+                        AccountManager am = (AccountManager) getActivity().getSystemService(getActivity().ACCOUNT_SERVICE);
+                        account = accountManager.getCurrentAccount();
+                        Log.i("By Mohammed", "the account name is: " + account.name);
+                        am.removeAccount(account, null, null);
+                        getActivity().finish();
+                        Intent start = new Intent(getActivity(), FileDisplayActivity.class);
+                        start.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                        startActivity(start);
+
                         return true;
                     }
 
@@ -1804,7 +1815,61 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
 
 
+    private class GenerateUNTIDyMatrix extends AsyncTask<String,String,String> {
 
+        protected void onPreExecute() {
+            super.onPreExecute();
+
+            pd2 = new ProgressDialog(getActivity());
+            pd2.setMessage("Request the server to generate authentication matrix");
+            pd2.setCancelable(false);
+            pd2.show();
+
+        }
+
+        protected String doInBackground(String... params) {
+
+
+            HttpURLConnection connection = null;
+
+            int code;
+
+            try {
+                URL url = new URL(params[0]);
+                connection = (HttpURLConnection) url.openConnection();
+                connection.connect();
+
+                code = connection.getResponseCode();
+
+
+                return String.valueOf(code);
+
+
+            } catch (MalformedURLException e) {
+                e.printStackTrace();
+                Log.i("ByMohammed","MalformedURLException");
+            } catch (IOException e) {
+                e.printStackTrace();
+                Log.i("ByMohammed","IOException");
+            } finally {
+                if (connection != null) {
+                    connection.disconnect();
+                }
+
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(String result) {
+            super.onPostExecute(result);
+            if (pd2.isShowing())
+                pd2.dismiss();
+                Toast.makeText(getActivity(), "UNTIDyMatrix has been generated on the server. It will be downloaded soon",
+                               Toast.LENGTH_LONG).show();
+
+        }
+    }
     private class GetUNTIDyMatrix extends AsyncTask<String,String,String> {
 
         protected void onPreExecute() {
@@ -1878,72 +1943,17 @@ public class OCFileListFragment extends ExtendedListFragment implements
             super.onPostExecute(result);
 
             if (pd1.isShowing()){
-                        pd1.dismiss();
-                        Toast.makeText(getActivity(), "UNTIDyMatrix has been downloaded, it will be used to authenticate the next download",
-                                       Toast.LENGTH_LONG).show();
-                    }
-
-
-
-
-            }
-
-
-    }
-    private class GenerateUNTIDyMatrix extends AsyncTask<String,String,String> {
-
-        protected void onPreExecute() {
-            super.onPreExecute();
-
-            pd2 = new ProgressDialog(getActivity());
-            pd2.setMessage("Request the server to generate authentication matrix");
-            pd2.setCancelable(false);
-            pd2.show();
-
-        }
-
-        protected String doInBackground(String... params) {
-
-
-            HttpURLConnection connection = null;
-
-            int code;
-
-            try {
-                URL url = new URL(params[0]);
-                connection = (HttpURLConnection) url.openConnection();
-                connection.connect();
-
-                code = connection.getResponseCode();
-
-
-                return String.valueOf(code);
-
-
-            } catch (MalformedURLException e) {
-                e.printStackTrace();
-                Log.i("ByMohammed","MalformedURLException");
-            } catch (IOException e) {
-                e.printStackTrace();
-                Log.i("ByMohammed","IOException");
-            } finally {
-                if (connection != null) {
-                    connection.disconnect();
-                }
-
-            }
-            return null;
-        }
-
-        @Override
-        protected void onPostExecute(String result) {
-            super.onPostExecute(result);
-            if (pd2.isShowing())
-                pd2.dismiss();
-                Toast.makeText(getActivity(), "UNTIDyMatrix has been generated on the server. It will be downloaded soon",
+                pd1.dismiss();
+                Toast.makeText(getActivity(), "UNTIDyMatrix has been downloaded, it will be used to authenticate the next download",
                                Toast.LENGTH_LONG).show();
+            }
+
+
+
 
         }
+
+
     }
     private class Authenticate extends AsyncTask<String,String,String> {
 

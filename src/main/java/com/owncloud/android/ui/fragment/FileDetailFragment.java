@@ -23,10 +23,12 @@
 package com.owncloud.android.ui.fragment;
 
 import android.accounts.Account;
+import android.accounts.AccountManager;
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -455,6 +457,13 @@ public class FileDetailFragment extends FileFragment implements OnClickListener,
             }
             case R.id.action_download_file:
             case R.id.action_sync_file: {
+                //This view is shown when you click on a file and get inside the comments page and then download it from there
+                //This is not the view that lists all the files as a main page.
+                // By Mohammed, logout
+                //Log.i("By Mohammed","Try to log out here once we download it");
+                //AccountManager am = (AccountManager) getActivity().getSystemService(Context.ACCOUNT_SERVICE);
+
+                //am.removeAccount(account, null, null);
                 containerActivity.getFileOperationsHelper().syncFile(getFile());
                 return true;
             }

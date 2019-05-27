@@ -361,6 +361,7 @@ public class UserInfoActivity extends FileActivity implements Injectable {
                     .setIcon(R.drawable.ic_warning)
                     .setPositiveButton(R.string.common_ok,
                             (dialogInterface, i) -> {
+                                // By Mohammed, log out or delete/remove the account
                                 // remove contact backup job
                                 ContactsPreferenceActivity.cancelContactBackupJobForAccount(getActivity(), account);
 

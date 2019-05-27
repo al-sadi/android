@@ -91,6 +91,7 @@ public class DownloadFileOperation extends RemoteOperation {
     public String getSavePath() {
         if (file.getStoragePath() != null) {
             File path = new File(file.getStoragePath());  // re-downloads should be done over the original file
+
             if (path.canWrite()) {
                 return path.getAbsolutePath();
             }
@@ -206,7 +207,6 @@ public class DownloadFileOperation extends RemoteOperation {
         }
         Log_OC.i(TAG, "Download of " + file.getRemotePath() + " to " + getSavePath() + ": " +
                 result.getLogMessage());
-        Log.i("By Mohammed", "Try downloading a file");
         return result;
 
     }
