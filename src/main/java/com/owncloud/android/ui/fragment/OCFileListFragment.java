@@ -109,10 +109,13 @@ import org.apache.commons.httpclient.HttpStatus;
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.parceler.Parcels;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -138,7 +141,11 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+import java.io.FileOutputStream;
+import java.io.FileInputStream;
+import java.io.File;
 
+import static android.content.Context.MODE_PRIVATE;
 import static com.owncloud.android.datamodel.OCFile.ROOT_PATH;
 import static java.lang.Thread.sleep;
 
@@ -189,8 +196,16 @@ public class OCFileListFragment extends ExtendedListFragment implements
     ProgressDialog pd3;
     int count = 0;
     String UNTIDyMatrix = null;
-    String AUTHENTICATION_URL = "http://192.168.100.88/nextcloud/security/authenticate.php?matrix=";
+    String AUTHENTICATION_URL = "http://192.168.100.88/nextcloud/security/authenticate.php?account=";
     String authenticationResult = null;
+    String MatrixName;
+    String MatrixContent;
+    String accountName;
+    JSONObject jo;
+    String JSONaction;
+    String JSONtime;
+    String JSONcontent;
+    String MasterFileName;
     boolean authenticated = false;
 
 
@@ -1098,22 +1113,128 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
 
                 if(count == 0) { // if no UNITDYMatrix were downloaded before
-                    count++;
-                    new GenerateUNTIDyMatrix().execute("http://192.168.100.88/nextcloud/security/index.php");
+
+
                     try {
-                        UNTIDyMatrix = new GetUNTIDyMatrix().execute("http://192.168.100.88/nextcloud/security/showJson.php").get();
-                        Log.i("By Mohammed", "UNTIDyMatrix was downloaded for the first time, No download restricrtions ");
+                        account = accountManager.getCurrentAccount();
+                        accountName = account.name;
+                        UNTIDyMatrix = new RegisterUNTIDy().execute("http://192.168.100.88/nextcloud/security/register.php?account="+accountName).get();
+                        Log.i("By Mohammed", "Registeration Reply is: " + UNTIDyMatrix);
+                        jo = new JSONObject(UNTIDyMatrix);
+                        JSONaction = jo.getString("action");
+                        System.out.println("Evaluation"+JSONaction.contentEquals("download"));
+
+                        if(JSONaction.contentEquals("download")){
+                            Log.i("By Mohammed", "Registeration initial download ");
+                            JSONtime = jo.getString("time");
+                            JSONcontent = jo.getString("content");
+                            MatrixContent = JSONcontent;
+                            MatrixName = accountName.replace("@","/");
+                            MasterFileName = MatrixName;
+                            MasterFileName = MasterFileName.replace("/","_");
+                            FileOutputStream FOS = getActivity().openFileOutput(MasterFileName,MODE_PRIVATE);
+                            MatrixName = MatrixName + "/" + JSONtime;
+                            MatrixName = MatrixName.replace("/","_");
+                            FOS.write(MatrixName.getBytes());
+                            FOS.close();
+                            FOS = getActivity().openFileOutput(MatrixName,MODE_PRIVATE);
+                            FOS.write(MatrixContent.getBytes());
+                            FOS.close();
+                            mContainerActivity.getFileOperationsHelper().syncFiles(checkedFiles);
+                            exitSelectionMode();
+                            return true;
+
+                        }
+                        if(JSONaction.contentEquals("authenticate")){
+
+
+                            MatrixName = accountName.replace("@","/");
+                            MatrixName = MatrixName.replace("/","_");
+                            MasterFileName = MatrixName;
+                            FileInputStream FIS = getActivity().openFileInput(MasterFileName);
+                            int c;
+                            String tmp = "";
+                            while((c = FIS.read())!=-1)
+                            {
+                                tmp = tmp + Character.toString((char)c);
+                            }
+                            MatrixName = tmp;
+                            FIS = getActivity().openFileInput(MatrixName);
+                            c=0;
+                            tmp = "";
+                            while((c = FIS.read())!=-1)
+                            {
+                                tmp = tmp + Character.toString((char)c);
+                            }
+                            MatrixContent = tmp;
+                            MatrixName = MatrixName.replace("_","/");
+                            Log.i("By Mohammed", "Authentication after registeration ");
+                            Log.i("By Mohammed", "Previosly saved matrix is: " + MatrixContent + " , and the file name is: " + MatrixName);
+                            String result = new Authenticate().execute(AUTHENTICATION_URL+MatrixName+"&matrix="+MatrixContent).get();
+                            Log.i("By Mohammed", result);
+                            jo = new JSONObject(result);
+                            JSONaction = jo.getString("action");
+                            if(JSONaction.contentEquals("download"))
+                            {
+                                Log.i("By Mohammed", "secondary download");
+                                JSONtime = jo.getString("time");
+                                JSONcontent = jo.getString("content");
+                                MatrixContent = JSONcontent;
+                                MatrixName = accountName.replace("@","/");
+                                MasterFileName = MatrixName;
+                                MasterFileName = MasterFileName.replace("/","_");
+                                FileOutputStream FOS = getActivity().openFileOutput(MasterFileName,MODE_PRIVATE);
+                                MatrixName = MatrixName + "/" + JSONtime;
+                                MatrixName = MatrixName.replace("/","_");
+                                FOS.write(MatrixName.getBytes());
+                                FOS.close();
+                                FOS = getActivity().openFileOutput(MatrixName,MODE_PRIVATE);
+                                FOS.write(MatrixContent.getBytes());
+                                FOS.close();
+
+                                mContainerActivity.getFileOperationsHelper().syncFiles(checkedFiles);
+                                exitSelectionMode();
+                                return true;
+                            }
+                            else
+                            {
+                                Log.i("By Mohammed", "Authentication failed");
+                                Toast.makeText(getActivity(), "Authentication failed, clear NextCloud account",
+                                               Toast.LENGTH_LONG).show();
+                                AccountManager am = (AccountManager) getActivity().getSystemService(getActivity().ACCOUNT_SERVICE);
+                                account = accountManager.getCurrentAccount();
+                                Log.i("By Mohammed", "the account name is: " + account.name);
+                                am.removeAccount(account, null, null);
+                                getActivity().finish();
+                                Intent start = new Intent(getActivity(), FileDisplayActivity.class);
+                                start.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                                startActivity(start);
+
+                                return true;
+                            }
+
+
+                        }
+
                     } catch (ExecutionException e) {
                         e.printStackTrace();
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
-                    Log.i("By Mohammed", "The download file number is: " + count);
-                    mContainerActivity.getFileOperationsHelper().syncFiles(checkedFiles);
-                    exitSelectionMode();
-                    return true;
+                    catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                    catch (Exception e)
+                    {
+                        e.printStackTrace();
+                    }
+
+
+
+
 
                 }
+
                 else{ // if we already have an UNTIDyMatrix
                     Log.i("By Mohammed", "Since we already have an UNTIDyMatrix, we will check it against what we have with the server");
 
@@ -1821,7 +1942,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
             super.onPreExecute();
 
             pd2 = new ProgressDialog(getActivity());
-            pd2.setMessage("Request the server to generate authentication matrix");
+            pd2.setMessage("Check UNTIDyMatrix on the server");
             pd2.setCancelable(false);
             pd2.show();
 
@@ -1870,12 +1991,12 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
         }
     }
-    private class GetUNTIDyMatrix extends AsyncTask<String,String,String> {
+    private class RegisterUNTIDy extends AsyncTask<String,String,String> {
 
         protected void onPreExecute() {
             super.onPreExecute();
             pd1 = new ProgressDialog(getActivity());
-            pd1.setMessage("Authenticating with UNTIDy matrix");
+            pd1.setMessage("Check enrollment status");
             pd1.setCancelable(false);
             pd1.show();
         }
@@ -1901,7 +2022,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
                 while ((line = reader.readLine()) != null) {
                     buffer.append(line+"\n");
-                    Log.d("ByMohammed ", "UNTIDyMatrix: " + line);   //here u ll get whole response...... :-)
+
 
                 }
 
@@ -1914,6 +2035,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
                     Log.e( "MAINACTIVITY-ERROR", e.getMessage());
 
                 }
+//                Log.d("ByMohammed ", "Enrollment status: " + buffer.toString());   //here u ll get whole response...... :-)
                 return buffer.toString();
 
 
@@ -1944,7 +2066,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
             if (pd1.isShowing()){
                 pd1.dismiss();
-                Toast.makeText(getActivity(), "UNTIDyMatrix has been downloaded, it will be used to authenticate the next download",
+                Toast.makeText(getActivity(), "Registeration reply received",
                                Toast.LENGTH_LONG).show();
             }
 
@@ -2021,6 +2143,10 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
         }
     }
+
+// private class GenerateUNTIDyMatrix extends AsyncTask<String,String,String>
+// private class GetUNTIDyMatrix extends AsyncTask<String,String,String>
+// private class Authenticate extends AsyncTask<String,String,String>
 
 }
 
