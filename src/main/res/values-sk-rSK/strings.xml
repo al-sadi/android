@@ -3,6 +3,7 @@
     <string name="about_android">%1$s aplikácie pre Android</string>
     <string name="about_title">O</string>
     <string name="about_version">verzia %1$s</string>
+    <string name="about_version_with_build">verzia %1$s, zostavenie #%2$s</string>
     <string name="account_creation_failed">Vytvorenie účtu sa nepodarilo</string>
     <string name="account_icon">Ikona účtu</string>
     <string name="account_not_found">Účet sa nenašiel!</string>
@@ -18,7 +19,7 @@
     <string name="actionbar_logger">Logy</string>
     <string name="actionbar_mkdir">Nový priečinok</string>
     <string name="actionbar_move">Presunúť</string>
-    <string name="actionbar_open_as_richdocument">Otvoriť s Collabora</string>
+    <string name="actionbar_open_as_richdocument_parameter">Otvoriť pomocou %1$s</string>
     <string name="actionbar_open_with">Otvoriť pomocou</string>
     <string name="actionbar_search">Hľadať</string>
     <string name="actionbar_see_details">Podrobnosti</string>
@@ -33,6 +34,7 @@
     <string name="activity_chooser_title">Odoslať odkaz…</string>
     <string name="activity_icon">Aktivita</string>
     <string name="add_to_cloud">Pridaj do %1$s</string>
+    <string name="associated_account_not_found">Priradený účet sa nenašiel</string>
     <string name="auth_access_failed">Prístup zamietnutý: %1$s</string>
     <string name="auth_account_does_not_exist">Účet zatiaľ v zariadení neexistuje</string>
     <string name="auth_account_not_new">Účet pre tohoto používateľa a tento server už v tomto zariadení existuje</string>
@@ -40,13 +42,9 @@
     <string name="auth_bad_oc_version_title">Nerozpoznaná verzia servera</string>
     <string name="auth_can_not_auth_against_server">Nie je možné sa overiť voči tomuto serveru</string>
     <string name="auth_check_server">Skontrolovať server</string>
-    <string name="auth_connecting_auth_server">Pripájam sa na autentifikačný server…</string>
     <string name="auth_connection_established">Pripojenie vytvorené</string>
     <string name="auth_expired_basic_auth_toast">Zadajte prosím aktuálne heslo</string>
-    <string name="auth_expired_oauth_token_toast">Vaša autorizácia vypršala. Prosím, autorizujte sa znovu</string>
-    <string name="auth_expired_saml_sso_token_toast">Vaše pripojenie vypršalo. Pripojte sa znovu prosím</string>
     <string name="auth_fail_get_user_name">Váš server nevracia správne používateľské ID, kontaktujte prosím správcu systému </string>
-    <string name="auth_getting_authorization">Získavam autorizáciu…</string>
     <string name="auth_host_address">Adresa servera</string>
     <string name="auth_host_url">Adresa servera https://…</string>
     <string name="auth_illegal_login_used">Použitá nedovolená prihlasovacia URL</string>
@@ -144,9 +142,12 @@
     <string name="copy_file_invalid_into_descendent">Nie je možné skopírovať priečinok do samého seba</string>
     <string name="copy_file_invalid_overwrite">Súbor už v cieľovom priečinku existuje</string>
     <string name="copy_file_not_found">Nemožno kopírovať. Overte či súbor ešte existuje</string>
+    <string name="copy_internal_link">Kopírovať interný odkaz</string>
+    <string name="copy_internal_link_subline">Funguje len pre používateľov s prístupom k tomuto priečinku</string>
     <string name="copy_link">Kopíruj odkaz</string>
     <string name="copy_move_to_encrypted_folder_not_supported">Kopírovanie/presun do šifrovaného priečinku v súčasnosti nie je podporované.</string>
     <string name="copy_to">Kopírovať do…</string>
+    <string name="could_not_retrieve_url">Nie je možné získať URL</string>
     <string name="create_dir_fail_msg">Nemožno vytvoriť priečinok</string>
     <string name="create_file_from_template">Vytvára sa súbor podľa šablóny</string>
     <string name="create_new_document">Vytvoriť nový dokument</string>
@@ -224,9 +225,11 @@
     <string name="error__upload__local_file_not_copied">%1$s nemožno skopírovať do lokálneho priečinka %2$s</string>
     <string name="error_cant_bind_to_operations_service">Kritická chyba: operáciu nemožno vykonať</string>
     <string name="error_comment_file">Chyba pri pridaní komentáru k súboru</string>
+    <string name="error_retrieving_file">Chyba pri získavaní súboru</string>
     <string name="error_retrieving_templates">Chyba pri načítaní šablón</string>
     <string name="error_starting_direct_camera_upload">Chyba pri otváraní fotoaparátu</string>
     <string name="fab_label">Pridať alebo nahrať</string>
+    <string name="failed_to_download">Nepodarilo sa odovzdať súbor správcovi preberania</string>
     <string name="fallback_weblogin_back">Späť</string>
     <string name="fallback_weblogin_text">Vrátiť sa k pôvodnému spôsobu prihlásenia</string>
     <string name="favorite">Pridať do obľúbených</string>
@@ -402,10 +405,6 @@
     <string name="notifications_loading_activity">Nahrávanie notifikácií…</string>
     <string name="notifications_no_results_headline">Žiadne upozornenia</string>
     <string name="notifications_no_results_message">Prosím skontrolujte znova neskôr.</string>
-    <string name="oauth_2_0_access_end_point_address_hint">Adresa end-pointu prístupu</string>
-    <string name="oauth_2_0_auth_end_point_address_hint">Adresa end-pointu overovania</string>
-    <string name="oauth_check_onoff">Prihlásiť sa pomocou OAuth 2.0</string>
-    <string name="oauth_login_connection">Pripájam sa na OAuth 2.0 server…</string>
     <string name="offline_mode">Bez internetového pripojenia</string>
     <string name="operation_canceled">Operácia bola zrušená</string>
     <string name="outdated_server">Verzia servra už nie je podporovaná, prosím aktualizujte!</string>
@@ -514,6 +513,7 @@
     <string name="resized_image_not_possible_download">Obrázok v inom rozlíšení nedostupný.  Stiahnuť pôvodný obrázok?</string>
     <string name="restore">Obnoviť súbor</string>
     <string name="restore_button_description">Obnovenie zmazaného súboru</string>
+    <string name="retrieving_file">Získava sa súbor…</string>
     <string name="richdocuments_failed_to_load_document">Nepodarilo sa načítať dokument!</string>
     <string name="saml_authentication_required_text">Vyžaduje sa heslo</string>
     <string name="saml_authentication_wrong_pass">Nesprávne heslo</string>
@@ -546,6 +546,7 @@
     <string name="share_link_file_error">Pri pokuse o sprístupnenie tohto súboru alebo priečinka došlo k chybe</string>
     <string name="share_link_file_no_exist">Sprístupnenie nie je možné. Skontrolujte, či súbor existuje</string>
     <string name="share_link_forbidden_permissions">sprístupniť tento súbor</string>
+    <string name="share_link_optional_password_title">Zadajte voliteľné heslo </string>
     <string name="share_link_password_title">Vložte heslo</string>
     <string name="share_no_expiration_date_label">Nastaviť dátum expirácie</string>
     <string name="share_no_password_title">Nastaviť heslo</string>
@@ -623,7 +624,11 @@
     <string name="storage_movies">Videá</string>
     <string name="storage_music">Hudba</string>
     <string name="storage_pictures">Obrázky</string>
-    <string name="stream">Streamovať s...</string>
+    <string name="store_full_desc">Platforma, ktorú môžete bežať na vlastnom serveri, ktorú môžete mať kompletne pod kontrolou.\n\nFunkcie:\n* Jednoducho použiteľné moderné rozhranie, hodiace sa k vzhľadu vášho servera\n* Nahrávanie súborov na Nextcloud server\n* Ich sprístupnenie s inými ľudmi\n* Synchronizácia vašich obľúbených súborov a priečinkov\n* Vyhľadávanie naprieč všetkými zložkami na serveri\n* Automatické nahrávanie fotiek a videí nasnímaných vašim zariadením\n* Doručovanie notifikácií\n* Podpora viac účtov naraz\n* Zabezpečený prístup k vašim dátam pomocou odtlačku prstu alebo kódom PIN\n* Začlenenie DAVx5 (predtým známy ako DAVdroid) pre jednoduchý prístup ku kalendáru &amp; synchronizácii kontaktov\n\nAkékoľvek problémy prosím hláste na https://github.com/nextcloud/android/issues a o aplikácii môžete diskutovať na https://help.nextcloud.com/c/clients/android\n\nNepoznáte ešte Nextcloud? Nextcloud je server pre súkromnú synchronizáciu súborov &amp;, zdieľanie a komunikáciu. Je to slobodný softvér a môžete si ho prevádzkovať buď sami alebo si ho prenajímať od nejakej spoločnosti. Týmto spôsobom získate plnú vládu nad svojimi fotkami, údajom v kalendári a kontaktoch, dokumentom a všetkým ostatným.\n\nViac zistíte na https://nextcloud.com</string>
+    <string name="store_full_dev_desc">Platforma, ktorú môžete bežať na vlastnom serveri, ktorú môžete mať kompletne pod kontrolou.\nToto je oficiálna vývojová verzia, obsahujúca dennú vzorku všetkých nových a nevyskúšaných funkcií, ktoré môžu spôsobovať nestabilitu a viesť ku strate dát. Aplikácia v tomto štádiu vývoja je určená tým používateľom, ktorí sú ochotní skúšať a hlásiť chyby, ktoré sa vyskytnú. Nepoužívajte ju pre svoju produkčnú prácu.\n\nObe oficiálne verzie, tak vývojová ako aj produkčná sú k dispozícii na F-droid a je možné ich mať nainštalované súbežne.</string>
+    <string name="store_short_desc">Platforma, ktorú môžete bežať na vlastnom serveri, ktorú môžete mať kompletne pod kontrolou.</string>
+    <string name="store_short_dev_desc">Platforma, ktorú môžete bežať na vlastnom serveri, ktorú môžete mať kompletne pod kontrolou (vývojová verzia)</string>
+    <string name="stream">Streamovať s…</string>
     <string name="stream_not_possible_headline">Vnútorné streamovanie nie je možné</string>
     <string name="stream_not_possible_message">Médium si namiesto toho stiahnite alebo použite externú aplikáciu.</string>
     <string name="subject_shared_with_you">\"%1$s\" vám bol sprístupnený</string>
@@ -654,7 +659,7 @@
     <string name="tags">Štítky</string>
     <string name="test_server_button">Test serverového pripojenia</string>
     <string name="thumbnail">Náhľad</string>
-    <string name="timeout_richDocuments">Načítanie trvá veľmi dlho...</string>
+    <string name="timeout_richDocuments">Načítanie trvá veľmi dlho…</string>
     <string name="trashbin_activity_title">Zmazané súbory</string>
     <string name="trashbin_empty_headline">Žiadne zmazané súbory</string>
     <string name="trashbin_empty_message">Tu budete mať možnosť obnoviť zmazané súbory</string>
@@ -757,8 +762,6 @@
     <string name="wait_checking_credentials">Overujem uložené prihlasovacie údaje</string>
     <string name="wait_for_tmp_copy_from_private_storage">Kopírovanie súboru z privátneho úložiska</string>
     <string name="what_s_new_image">Obrázok čo je nové</string>
-    <string name="whats_new_device_credentials_content">Použi vzor, heslo, PIN alebo odtlačok prsta na zabezpečenie svojich dát.</string>
-    <string name="whats_new_device_credentials_title">Použiť vnútornú ochranu zariadenia Android</string>
     <string name="whats_new_skip">Preskočiť</string>
     <string name="whats_new_title">Nové v %1$s</string>
     <plurals name="sync_fail_in_favourites_content">

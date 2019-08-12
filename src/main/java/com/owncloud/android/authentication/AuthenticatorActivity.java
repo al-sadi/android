@@ -51,6 +51,7 @@ import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
@@ -76,6 +77,8 @@ import android.webkit.CookieManager;
 import android.webkit.CookieSyncManager;
 import android.webkit.HttpAuthHandler;
 import android.webkit.SslErrorHandler;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.EditText;
@@ -88,7 +91,10 @@ import com.blikoon.qrcodescanner.QrCodeActivity;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.textfield.TextInputLayout;
 import com.nextcloud.client.account.UserAccountManager;
+import com.nextcloud.client.device.DeviceInfo;
 import com.nextcloud.client.di.Injectable;
+import com.nextcloud.client.onboarding.FirstRunActivity;
+import com.nextcloud.client.onboarding.OnboardingService;
 import com.nextcloud.client.preferences.AppPreferences;
 import com.owncloud.android.MainApp;
 import com.owncloud.android.R;
@@ -107,13 +113,12 @@ import com.owncloud.android.lib.common.operations.RemoteOperationResult;
 import com.owncloud.android.lib.common.operations.RemoteOperationResult.ResultCode;
 import com.owncloud.android.lib.common.utils.Log_OC;
 import com.owncloud.android.lib.resources.status.OwnCloudVersion;
-import com.owncloud.android.lib.resources.users.GetRemoteUserInfoOperation;
+import com.owncloud.android.lib.resources.users.GetUserInfoRemoteOperation;
 import com.owncloud.android.operations.DetectAuthenticationMethodOperation.AuthenticationMethod;
 import com.owncloud.android.operations.GetServerInfoOperation;
 import com.owncloud.android.services.OperationsService;
 import com.owncloud.android.services.OperationsService.OperationsServiceBinder;
 import com.owncloud.android.ui.activity.FileDisplayActivity;
-import com.owncloud.android.ui.activity.FirstRunActivity;
 import com.owncloud.android.ui.components.CustomEditText;
 import com.owncloud.android.ui.dialog.CredentialsDialogFragment;
 import com.owncloud.android.ui.dialog.IndeterminateProgressDialog;
@@ -143,6 +148,7 @@ import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
+import de.cotech.hw.fido.WebViewFidoBridge;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 /**
@@ -232,6 +238,8 @@ public class AuthenticatorActivity extends AccountAuthenticatorActivity
 
     private WebView mLoginWebView;
 
+    private WebViewFidoBridge webViewFidoBridge;
+
     private String mAuthStatusText = EMPTY_STRING;
     private int mAuthStatusIcon;
 
@@ -250,11 +258,10 @@ public class AuthenticatorActivity extends AccountAuthenticatorActivity
     private TextInputLayout mPasswordInputLayout;
     private boolean forceOldLoginMethod;
 
-    @Inject
-    UserAccountManager accountManager;
-
-    @Inject
-    protected AppPreferences preferences;
+    @Inject UserAccountManager accountManager;
+    @Inject AppPreferences preferences;
+    @Inject OnboardingService onboarding;
+    @Inject DeviceInfo deviceInfo;
 
     /**
      * {@inheritDoc}
@@ -269,7 +276,7 @@ public class AuthenticatorActivity extends AccountAuthenticatorActivity
         Uri data = getIntent().getData();
         boolean directLogin = data != null && data.toString().startsWith(getString(R.string.login_data_own_scheme));
         if (savedInstanceState == null && !directLogin) {
-            FirstRunActivity.runIfNeeded(this);
+            onboarding.launchFirstRunIfNeeded(this);
         }
 
         // delete cookies for webView
@@ -291,7 +298,13 @@ public class AuthenticatorActivity extends AccountAuthenticatorActivity
 
         /// get input values
         mAction = getIntent().getByteExtra(EXTRA_ACTION, ACTION_CREATE);
-        mAccount = getIntent().getExtras().getParcelable(EXTRA_ACCOUNT);
+
+        Bundle extras = getIntent().getExtras();
+
+        if (extras != null) {
+            mAccount = extras.getParcelable(EXTRA_ACCOUNT);
+        }
+
         if (savedInstanceState != null) {
             mWaitingForOpId = savedInstanceState.getLong(KEY_WAITING_FOR_OP_ID);
             mIsFirstAuthAttempt = savedInstanceState.getBoolean(KEY_AUTH_IS_FIRST_ATTEMPT_TAG);
@@ -354,7 +367,7 @@ public class AuthenticatorActivity extends AccountAuthenticatorActivity
 
     private static String getWebLoginUserAgent() {
         return Build.MANUFACTURER.substring(0, 1).toUpperCase(Locale.getDefault()) +
-                Build.MANUFACTURER.substring(1).toLowerCase(Locale.getDefault()) + " " + Build.MODEL;
+            Build.MANUFACTURER.substring(1).toLowerCase(Locale.getDefault()) + " " + Build.MODEL + " (Android)";
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -374,6 +387,8 @@ public class AuthenticatorActivity extends AccountAuthenticatorActivity
         }
         mLoginWebView.getSettings().setSaveFormData(false);
         mLoginWebView.getSettings().setSavePassword(false);
+
+        webViewFidoBridge = WebViewFidoBridge.createInstanceForWebView(this, mLoginWebView);
 
         Map<String, String> headers = new HashMap<>();
         headers.put(RemoteOperation.OCS_API_HEADER, RemoteOperation.OCS_API_HEADER_VALUE);
@@ -447,6 +462,18 @@ public class AuthenticatorActivity extends AccountAuthenticatorActivity
     private void setClient(ProgressBar progressBar) {
         mLoginWebView.setWebViewClient(new WebViewClient() {
             @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                webViewFidoBridge.delegateShouldInterceptRequest(view, request);
+                return super.shouldInterceptRequest(view, request);
+            }
+
+            @Override
+            public void onPageStarted(WebView view, String url, Bitmap favicon) {
+                super.onPageStarted(view, url, favicon);
+                webViewFidoBridge.delegateOnPageStarted(view, url, favicon);
+            }
+
+            @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
                 if (url.startsWith(getString(R.string.login_data_own_scheme) + PROTOCOL_SUFFIX + "login/")) {
                     parseAndLoginFromWebView(url);
@@ -498,6 +525,9 @@ public class AuthenticatorActivity extends AccountAuthenticatorActivity
 
         if (loginUrlInfo != null) {
             try {
+                if (mHostUrlInput != null) {
+                    mHostUrlInput.setText("");
+                }
                 mServerInfo.mBaseUrl = AuthenticatorUrlUtils.normalizeUrlSuffix(loginUrlInfo.serverAddress);
                 webViewUser = loginUrlInfo.username;
                 webViewPassword = loginUrlInfo.password;
@@ -586,7 +616,12 @@ public class AuthenticatorActivity extends AccountAuthenticatorActivity
         mOkButton = findViewById(R.id.buttonOK);
         mOkButton.setOnClickListener(v -> onOkClick());
 
-        findViewById(R.id.scanQR).setOnClickListener(v -> onScan());
+        ImageButton scanQR = findViewById(R.id.scanQR);
+        if (deviceInfo.hasCamera(this)) {
+            scanQR.setOnClickListener(v -> onScan());
+        } else {
+            scanQR.setVisibility(View.GONE);
+        }
 
         setupInstructionMessage();
 
@@ -624,7 +659,7 @@ public class AuthenticatorActivity extends AccountAuthenticatorActivity
                 mServerInfo.mBaseUrl = mAccountMgr.getUserData(mAccount, Constants.KEY_OC_BASE_URL);
                 // TODO do next in a setter for mBaseUrl
                 mServerInfo.mIsSslConn = mServerInfo.mBaseUrl.startsWith(HTTPS_PROTOCOL);
-                mServerInfo.mVersion = AccountUtils.getServerVersion(mAccount);
+                mServerInfo.mVersion = accountManager.getServerVersion(mAccount);
             } else {
                 if (!webViewLoginMethod) {
                     mServerInfo.mBaseUrl = getString(R.string.server_url).trim();
@@ -1160,7 +1195,7 @@ public class AuthenticatorActivity extends AccountAuthenticatorActivity
             }   // else nothing ; only the last check operation is considered;
             // multiple can be started if the user amends a URL quickly
 
-        } else if (operation instanceof GetRemoteUserInfoOperation) {
+        } else if (operation instanceof GetUserInfoRemoteOperation) {
             onGetUserNameFinish(result);
         }
     }
@@ -1243,8 +1278,9 @@ public class AuthenticatorActivity extends AccountAuthenticatorActivity
 
             // show outdated warning
             if (getResources().getBoolean(R.bool.show_outdated_server_warning) &&
-                MainApp.OUTDATED_SERVER_VERSION.compareTo(mServerInfo.mVersion) >= 0) {
-                DisplayUtils.showServerOutdatedSnackbar(this);
+                MainApp.OUTDATED_SERVER_VERSION.isSameMajorVersion(mServerInfo.mVersion) &&
+                !mServerInfo.hasExtendedSupport) {
+                DisplayUtils.showServerOutdatedSnackbar(this, Snackbar.LENGTH_INDEFINITE);
             }
 
             webViewLoginMethod = mServerInfo.mVersion.isWebLoginSupported() && !forceOldLoginMethod;
@@ -1503,7 +1539,7 @@ public class AuthenticatorActivity extends AccountAuthenticatorActivity
             if (success) {
                 finish();
 
-                AccountUtils.setCurrentOwnCloudAccount(this, mAccount.name);
+                accountManager.setCurrentOwnCloudAccount(mAccount.name);
 
                 Intent i = new Intent(this, FileDisplayActivity.class);
                 i.setAction(FileDisplayActivity.RESTART);
@@ -1656,7 +1692,7 @@ public class AuthenticatorActivity extends AccountAuthenticatorActivity
 
         String accountName = com.owncloud.android.lib.common.accounts.AccountUtils.buildAccountName(uri, loginName);
         Account newAccount = new Account(accountName, accountType);
-        if (AccountUtils.exists(newAccount, getApplicationContext())) {
+        if (accountManager.exists(newAccount)) {
             // fail - not a new account, but an existing one; disallow
             RemoteOperationResult result = new RemoteOperationResult(ResultCode.ACCOUNT_NOT_NEW);
 
@@ -1706,7 +1742,7 @@ public class AuthenticatorActivity extends AccountAuthenticatorActivity
             mAccountMgr.setUserData(mAccount, Constants.KEY_DISPLAY_NAME, userInfo.getDisplayName());
             mAccountMgr.setUserData(mAccount, Constants.KEY_USER_ID, userInfo.getId());
             mAccountMgr.setUserData(mAccount, Constants.KEY_OC_ACCOUNT_VERSION,
-                                    Integer.toString(AccountUtils.ACCOUNT_VERSION_WITH_PROPER_ID));
+                                    Integer.toString(UserAccountManager.ACCOUNT_VERSION_WITH_PROPER_ID));
 
 
             setAccountAuthenticatorResult(intent.getExtras());

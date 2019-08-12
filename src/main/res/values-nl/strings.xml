@@ -3,6 +3,7 @@
     <string name="about_android">%1$s Android app</string>
     <string name="about_title">Over</string>
     <string name="about_version">versie %1$s</string>
+    <string name="about_version_with_build">versie %1$s, build #%2$s</string>
     <string name="account_creation_failed">Account aanmaken mislukt</string>
     <string name="account_icon">Accountpictogram</string>
     <string name="account_not_found">Account niet gevonden!</string>
@@ -18,7 +19,7 @@
     <string name="actionbar_logger">Logs</string>
     <string name="actionbar_mkdir">Nieuwe map</string>
     <string name="actionbar_move">Verplaatsen</string>
-    <string name="actionbar_open_as_richdocument">Openen met Collabora</string>
+    <string name="actionbar_open_as_richdocument_parameter">Openen met %1$s</string>
     <string name="actionbar_open_with">Openen met</string>
     <string name="actionbar_search">Zoeken</string>
     <string name="actionbar_see_details">Details</string>
@@ -33,6 +34,7 @@
     <string name="activity_chooser_title">Verstuur link naar…</string>
     <string name="activity_icon">Activiteit</string>
     <string name="add_to_cloud">Voeg toe aan %1$s</string>
+    <string name="associated_account_not_found">Geassocieerd account niet gevonden!</string>
     <string name="auth_access_failed">Toegang mislukt: %1$s</string>
     <string name="auth_account_does_not_exist">Account bestaat nog niet op dit apparaat</string>
     <string name="auth_account_not_new">Er bestaat al een account voor deze gebruiker en server op dit apparaat</string>
@@ -40,13 +42,9 @@
     <string name="auth_bad_oc_version_title">Niet-herkende serverversie</string>
     <string name="auth_can_not_auth_against_server">Kan niet authenticeren tegen deze server</string>
     <string name="auth_check_server">Controleer server</string>
-    <string name="auth_connecting_auth_server">Verbinden met authenticatie server…</string>
     <string name="auth_connection_established">Verbinding tot stand gebracht</string>
     <string name="auth_expired_basic_auth_toast">Voer het huidige wachtwoord in</string>
-    <string name="auth_expired_oauth_token_toast">Je autorisatie is verstreken. Autoriseer opnieuw</string>
-    <string name="auth_expired_saml_sso_token_toast">Je sessie is verstreken. Verbind opnieuw</string>
     <string name="auth_fail_get_user_name">Je server geeft geen geldige userID terug, neem contact op met je server beheerder</string>
-    <string name="auth_getting_authorization">Autorisatie verkrijgen…</string>
     <string name="auth_host_address">Serveradres</string>
     <string name="auth_host_url">Serveradres https://…</string>
     <string name="auth_illegal_login_used">Ongeldige login URL gebruikt</string>
@@ -81,6 +79,7 @@
     <string name="auto_upload_path">/AutomatischUploaden</string>
     <string name="autoupload_create_new_custom_folder">Maak aangepaste nieuwe map aan</string>
     <string name="autoupload_custom_folder">Instellen aangepaste map</string>
+    <string name="autoupload_disable_power_save_check">Uitschakelen stroombesparingscontrole</string>
     <string name="avatar">Avatar</string>
     <string name="battery_optimization_close">Sluiten</string>
     <string name="battery_optimization_disable">Uitschakelen</string>
@@ -144,9 +143,12 @@
     <string name="copy_file_invalid_into_descendent">Een map kan niet naar een onderliggende map worden gekopieerd</string>
     <string name="copy_file_invalid_overwrite">Het bestand bestaat al in de doelmap</string>
     <string name="copy_file_not_found">Kan niet kopiëren. Ga na of het bestand wel bestaat</string>
+    <string name="copy_internal_link">Kopieer interne link</string>
+    <string name="copy_internal_link_subline">Werkt alleen voor gebruikers met toegang tot deze map</string>
     <string name="copy_link">Link kopiëren</string>
     <string name="copy_move_to_encrypted_folder_not_supported">Kopieren/verplaatsen naar een versleutelde map is momenteel niet mogelijk.</string>
     <string name="copy_to">Kopieer naar…</string>
+    <string name="could_not_retrieve_url">Kon url niet ophalen</string>
     <string name="create_dir_fail_msg">Kan map niet aanmaken</string>
     <string name="create_file_from_template">Creëren bestand vanaf sjabloon…</string>
     <string name="create_new_document">Creëer nieuw document</string>
@@ -224,9 +226,14 @@
     <string name="error__upload__local_file_not_copied">%1$s kon niet worden gekopieerd naar de lokale map %2$s</string>
     <string name="error_cant_bind_to_operations_service">Kritieke fout: kan de acties niet uitvoeren</string>
     <string name="error_comment_file">Fout bij plaatsen commentaar</string>
+    <string name="error_report_issue_action">Rapporteer</string>
+    <string name="error_retrieving_file">Fout bij ophalen van bestand</string>
     <string name="error_retrieving_templates">Fout bij ophalen sjablonen</string>
     <string name="error_starting_direct_camera_upload">Fout bij starten camera</string>
+    <string name="etm_preferences">Voorkeuren</string>
+    <string name="etm_title">Engineering Testmodus</string>
     <string name="fab_label">Toevoegen of uploaden</string>
+    <string name="failed_to_download">Kon het bestand niet doorgeven aan de download beheerder</string>
     <string name="fallback_weblogin_back">Terug</string>
     <string name="fallback_weblogin_text">Terug naar vorige login-methode</string>
     <string name="favorite">Toevoegen aan favorieten</string>
@@ -402,10 +409,6 @@
     <string name="notifications_loading_activity">Notificaties laden…</string>
     <string name="notifications_no_results_headline">Geen meldingen</string>
     <string name="notifications_no_results_message">Controleer later opnieuw.</string>
-    <string name="oauth_2_0_access_end_point_address_hint">Toegang end point adres</string>
-    <string name="oauth_2_0_auth_end_point_address_hint">Auth end point adres</string>
-    <string name="oauth_check_onoff">Inloggen met OAuth 2.0</string>
-    <string name="oauth_login_connection">Verbinden met OAuth 2.0 server…</string>
     <string name="offline_mode">Geen internet verbinding</string>
     <string name="operation_canceled">De bewerking werd geannuleerd</string>
     <string name="outdated_server">Deze server is verouderd, graag upgraden!</string>
@@ -447,6 +450,8 @@
     <string name="placeholder_media_time">12:23:45</string>
     <string name="placeholder_sentence">Dit is een plaatshouder</string>
     <string name="placeholder_timestamp">2012/05/18 12:23</string>
+    <string name="power_check_dialog_title">Uitschakelen stroombesparingscontrole</string>
+    <string name="power_save_check_dialog_message">Uitschakelen stroombesparingscontrole kan resulteren in uploaden van bestanden met lage accustand!</string>
     <string name="pref_behaviour_entries_delete_file">verwijderd worden</string>
     <string name="pref_behaviour_entries_keep_file">bewaard worden in originele map</string>
     <string name="pref_behaviour_entries_move">verplaatst worden naar app-map</string>
@@ -514,6 +519,7 @@
     <string name="resized_image_not_possible_download">Geen verkleinde afbeelding beschikbaar. Volledige afbeelding downloaden?</string>
     <string name="restore">Herstellen bestand</string>
     <string name="restore_button_description">Herstel verwijderd bestand</string>
+    <string name="retrieving_file">Bestand ophalen…</string>
     <string name="richdocuments_failed_to_load_document">Kon document niet laden!</string>
     <string name="saml_authentication_required_text">Wachtwoord vereist</string>
     <string name="saml_authentication_wrong_pass">Onjuist wachtwoord</string>
@@ -524,6 +530,7 @@
     <string name="screenshot_04_accounts">Verbinden met verschillend accounts</string>
     <string name="screenshot_05_autoUpload">Automatisch je foto\'s &amp; video\'s uploaden</string>
     <string name="screenshot_06_davdroid">Synchroniseer kalender &amp; contactpersonen met DAVx5 (vroeger bekend als DAVdroid)</string>
+    <string name="screenshot_06_davdroid_heading">Synchroniseren agenda &amp; contactpersonen</string>
     <string name="search_users_and_groups_hint">Zoeken naar gebruikers en groepen</string>
     <string name="select_all">Alles selecteren</string>
     <string name="select_template">Kies sjabloon</string>
@@ -625,7 +632,7 @@
     <string name="storage_music">Muziek</string>
     <string name="storage_pictures">Afbeeldingen</string>
     <string name="store_full_desc">Het eigen-hosting productiviteitsplatform waarmee je zelf in control bent.\n\nFuncties:\n* Eenvoudige, moderne interface, passend bij het thema van jouw server\n* Upload bestanden naar je Nextcloud server\n* Deel ze met anderen\n* Hou je favoriete bestanden en mappen gesynchroniseerd\n* Zoek in alle mappen op je server\n* Auto Upload voor foto\'s en video\'s op je toestel\n* Blijf bij met meldingen\n* Multi-account ondersteuning\n* veilige toegang tot je gegevens door vingerafdruk of  PIN\n* Integratie met DAVx5 (vroeger bekend als DAVdroid) vooreenvoudig instellen van je agenda&amp; Contactpersonensynchronisatie\n\nMeld alle problemen op https://github.com/nextcloud/android/issues en bespreek deze app op https://help.nextcloud.com/c/clients/android\n\nNieuw bij Nextcloud? Nextcloud is een persoonlijk bestandensync- &amp; -deel en communicatieserver. het is vrije software, die je zelf kunt draaien of bij een betaalde provider. Hierdoor ben je zelf in control van jouw foto\'s, jouw agenda en contactgegevens, jouw documenten en al het andere.\n\nBekijk Nextcloud op https://nextcloud.com</string>
-    <string name="store_full_dev_desc">Het eigen-hosting productiviteitsplatform waarmee je zelf in control bent.\nDit is de officiële ontwikkelversie die gloednieuwe, ongeteste mogelijkheden heeft, die tot instabiliteit en gegevensverlies zouden kunnen leiden. De app is voor gebruikers die de nieuwe functies willen testen en eventuele bugs willen melden. Gebruik de app niet voor productiewerkzaamheden!\n\nZowel de ontwikkelversie als de reguliere versie zijn beschikbaar is in F-Droid en ze kunnen naast elkaar gebruikt worden.</string>
+    <string name="store_full_dev_desc">Het eigen-hosting productiviteitsplatform waarmee je zelf in control bent.\nDit is de officiële ontwikkelversie die gloednieuwe, ongeteste mogelijkheden heeft, die tot instabiliteit en gegevensverlies zouden kunnen leiden. De app is voor gebruikers die de nieuwe functies willen testen en eventuele bugs willen melden. Gebruik de app niet voor productiewerkzaamheden!\n\nZowel de ontwikkelversie als de reguliere versie zijn beschikbaar in F-Droid en ze kunnen naast elkaar gebruikt worden.</string>
     <string name="store_short_desc">Het eigen-hosting productiviteitsplatform waarmee je zelf in control bent</string>
     <string name="store_short_dev_desc">Het eigen-hosting productiviteitsplatform waarmee je zelf in control bent (dev preview versie)</string>
     <string name="stream">Streamen met…</string>
@@ -762,8 +769,6 @@
     <string name="wait_checking_credentials">Opgeslagen inloggegevens nakijken</string>
     <string name="wait_for_tmp_copy_from_private_storage">Bestand vanaf privéopslag kopiëren</string>
     <string name="what_s_new_image">Wat is nieuw afbeelding</string>
-    <string name="whats_new_device_credentials_content">Gebruik een patroon, wachtwoord, pin of je vingerafdruk om je gegevens te beveiligen.</string>
-    <string name="whats_new_device_credentials_title">Gebruik de interne Android\'s apparaatbeveiliging</string>
     <string name="whats_new_skip">Overslaan</string>
     <string name="whats_new_title">Nieuw in %1$s</string>
     <plurals name="sync_fail_in_favourites_content">

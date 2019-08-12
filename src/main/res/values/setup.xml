@@ -80,9 +80,6 @@
     <!-- Various other options -->
     <bool name="allow_profile_click">true</bool>
 
-    <!-- Bottom toolbar -->
-    <bool name="bottom_toolbar_enabled">false</bool>
-
     <!-- Help, imprint and feedback, and other things -->
     <bool name="passcode_enabled">true</bool>
     <bool name="device_credentials_enabled">true</bool>
@@ -126,7 +123,7 @@
     <string name="help_link" translatable="false">https://help.nextcloud.com/c/clients/android</string>
     <string name="translation_link" translatable="false">https://www.transifex.com/nextcloud/nextcloud/android/</string>
     <string name="contributing_link" translatable="false">https://github.com/nextcloud/android/blob/master/CONTRIBUTING.md</string>
-    <string name="report_issue_link" translatable="false">https://github.com/nextcloud/android/issues</string>
+    <string name="report_issue_link" translatable="false">https://github.com/nextcloud/android/issues/new/choose</string>
 
     <!-- login data links -->
     <string name="login_data_own_scheme" translatable="false">nc</string>
@@ -144,6 +141,8 @@
     <string name="dev_link">https://download.nextcloud.com/android/dev/nextcloud-dev-</string>
     <string name="dev_latest">https://download.nextcloud.com/android/dev/latest</string>
     <string name="dev_changelog">https://github.com/nextcloud/android/raw/dev/CHANGELOG.md</string>
+
+    <string name="buildNumber" translatable="false"></string>
 </resources>
 
 

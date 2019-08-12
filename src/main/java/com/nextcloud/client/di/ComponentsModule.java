@@ -20,14 +20,20 @@
 
 package com.nextcloud.client.di;
 
-import com.nextcloud.client.whatsnew.WhatsNewActivity;
+import com.nextcloud.client.errorhandling.ShowErrorActivity;
+import com.nextcloud.client.etm.EtmActivity;
+import com.nextcloud.client.onboarding.FirstRunActivity;
+import com.nextcloud.client.onboarding.WhatsNewActivity;
 import com.owncloud.android.authentication.AuthenticatorActivity;
 import com.owncloud.android.authentication.DeepLinkLoginActivity;
 import com.owncloud.android.files.BootupBroadcastReceiver;
+import com.owncloud.android.files.services.FileDownloader;
 import com.owncloud.android.files.services.FileUploader;
+import com.owncloud.android.jobs.NotificationJob;
 import com.owncloud.android.providers.DiskLruImageCacheFileProvider;
-import com.owncloud.android.providers.DocumentsStorageProvider;
 import com.owncloud.android.providers.UsersAndGroupsSearchProvider;
+import com.owncloud.android.services.AccountManagerService;
+import com.owncloud.android.services.OperationsService;
 import com.owncloud.android.ui.activities.ActivitiesActivity;
 import com.owncloud.android.ui.activity.BaseActivity;
 import com.owncloud.android.ui.activity.ConflictsResolveActivity;
@@ -38,9 +44,8 @@ import com.owncloud.android.ui.activity.ErrorsWhileCopyingHandlerActivity;
 import com.owncloud.android.ui.activity.ExternalSiteWebView;
 import com.owncloud.android.ui.activity.FileDisplayActivity;
 import com.owncloud.android.ui.activity.FilePickerActivity;
-import com.owncloud.android.ui.activity.FirstRunActivity;
 import com.owncloud.android.ui.activity.FolderPickerActivity;
-import com.owncloud.android.ui.activity.LogHistoryActivity;
+import com.owncloud.android.ui.activity.LogsActivity;
 import com.owncloud.android.ui.activity.ManageAccountsActivity;
 import com.owncloud.android.ui.activity.ManageSpaceActivity;
 import com.owncloud.android.ui.activity.NotificationsActivity;
@@ -58,14 +63,17 @@ import com.owncloud.android.ui.activity.UploadListActivity;
 import com.owncloud.android.ui.activity.UploadPathActivity;
 import com.owncloud.android.ui.activity.UserInfoActivity;
 import com.owncloud.android.ui.dialog.ChooseTemplateDialogFragment;
-import com.owncloud.android.ui.errorhandling.ErrorShowActivity;
 import com.owncloud.android.ui.fragment.ExtendedListFragment;
 import com.owncloud.android.ui.fragment.FileDetailActivitiesFragment;
 import com.owncloud.android.ui.fragment.FileDetailFragment;
+import com.owncloud.android.ui.fragment.FileDetailSharingFragment;
 import com.owncloud.android.ui.fragment.LocalFileListFragment;
 import com.owncloud.android.ui.fragment.OCFileListFragment;
 import com.owncloud.android.ui.fragment.contactsbackup.ContactListFragment;
 import com.owncloud.android.ui.preview.PreviewImageActivity;
+import com.owncloud.android.ui.preview.PreviewImageFragment;
+import com.owncloud.android.ui.preview.PreviewMediaFragment;
+import com.owncloud.android.ui.preview.PreviewTextFragment;
 import com.owncloud.android.ui.preview.PreviewVideoActivity;
 import com.owncloud.android.ui.trashbin.TrashbinActivity;
 
@@ -86,14 +94,14 @@ abstract class ComponentsModule {
     @ContributesAndroidInjector abstract CopyToClipboardActivity copyToClipboardActivity();
     @ContributesAndroidInjector abstract DeepLinkLoginActivity deepLinkLoginActivity();
     @ContributesAndroidInjector abstract DrawerActivity drawerActivity();
-    @ContributesAndroidInjector abstract ErrorShowActivity errorShowActivity();
+    @ContributesAndroidInjector abstract ShowErrorActivity errorShowActivity();
     @ContributesAndroidInjector abstract ErrorsWhileCopyingHandlerActivity errorsWhileCopyingHandlerActivity();
     @ContributesAndroidInjector abstract ExternalSiteWebView externalSiteWebView();
     @ContributesAndroidInjector abstract FileDisplayActivity fileDisplayActivity();
     @ContributesAndroidInjector abstract FilePickerActivity filePickerActivity();
     @ContributesAndroidInjector abstract FirstRunActivity firstRunActivity();
     @ContributesAndroidInjector abstract FolderPickerActivity folderPickerActivity();
-    @ContributesAndroidInjector abstract LogHistoryActivity logHistoryActivity();
+    @ContributesAndroidInjector abstract LogsActivity logsActivity();
     @ContributesAndroidInjector abstract ManageAccountsActivity manageAccountsActivity();
     @ContributesAndroidInjector abstract ManageSpaceActivity manageSpaceActivity();
     @ContributesAndroidInjector abstract NotificationsActivity notificationsActivity();
@@ -114,22 +122,32 @@ abstract class ComponentsModule {
     @ContributesAndroidInjector abstract UploadPathActivity uploadPathActivity();
     @ContributesAndroidInjector abstract UserInfoActivity userInfoActivity();
     @ContributesAndroidInjector abstract WhatsNewActivity whatsNewActivity();
+    @ContributesAndroidInjector abstract EtmActivity etmActivity();
 
     @ContributesAndroidInjector abstract ExtendedListFragment extendedListFragment();
     @ContributesAndroidInjector abstract FileDetailFragment fileDetailFragment();
     @ContributesAndroidInjector abstract LocalFileListFragment localFileListFragment();
     @ContributesAndroidInjector abstract OCFileListFragment ocFileListFragment();
     @ContributesAndroidInjector abstract FileDetailActivitiesFragment fileDetailActivitiesFragment();
+    @ContributesAndroidInjector abstract FileDetailSharingFragment fileDetailSharingFragment();
     @ContributesAndroidInjector abstract ChooseTemplateDialogFragment chooseTemplateDialogFragment();
+    @ContributesAndroidInjector abstract PreviewImageFragment previewImageFragment();
+    @ContributesAndroidInjector abstract ContactListFragment chooseContactListFragment();
+    @ContributesAndroidInjector abstract PreviewMediaFragment previewMediaFragment();
+    @ContributesAndroidInjector abstract PreviewTextFragment previewTextFragment();
 
-    @ContributesAndroidInjector
-    abstract ContactListFragment chooseContactListFragment();
+    @ContributesAndroidInjector abstract ReceiveExternalFilesActivity.DialogMultipleAccount dialogMultipleAccount();
+    @ContributesAndroidInjector abstract ReceiveExternalFilesActivity.DialogInputUploadFilename dialogInputUploadFilename();
 
     @ContributesAndroidInjector abstract FileUploader fileUploader();
+    @ContributesAndroidInjector abstract FileDownloader fileDownloader();
 
     @ContributesAndroidInjector abstract BootupBroadcastReceiver bootupBroadcastReceiver();
+    @ContributesAndroidInjector abstract NotificationJob.NotificationReceiver notificationJobBroadcastReceiver();
 
-    @ContributesAndroidInjector abstract DocumentsStorageProvider documentsStorageProvider();
     @ContributesAndroidInjector abstract UsersAndGroupsSearchProvider usersAndGroupsSearchProvider();
     @ContributesAndroidInjector abstract DiskLruImageCacheFileProvider diskLruImageCacheFileProvider();
+
+    @ContributesAndroidInjector abstract AccountManagerService accountManagerService();
+    @ContributesAndroidInjector abstract OperationsService operationsService();
 }

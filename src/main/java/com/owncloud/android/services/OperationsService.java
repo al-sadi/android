@@ -37,14 +37,13 @@ import android.os.Process;
 import android.text.TextUtils;
 import android.util.Pair;
 
+import com.nextcloud.client.account.UserAccountManager;
 import com.owncloud.android.MainApp;
 import com.owncloud.android.datamodel.FileDataStorageManager;
 import com.owncloud.android.datamodel.OCFile;
 import com.owncloud.android.lib.common.OwnCloudAccount;
 import com.owncloud.android.lib.common.OwnCloudClient;
 import com.owncloud.android.lib.common.OwnCloudClientManagerFactory;
-import com.owncloud.android.lib.common.OwnCloudCredentials;
-import com.owncloud.android.lib.common.OwnCloudCredentialsFactory;
 import com.owncloud.android.lib.common.operations.OnRemoteOperationListener;
 import com.owncloud.android.lib.common.operations.RemoteOperation;
 import com.owncloud.android.lib.common.operations.RemoteOperationResult;
@@ -53,7 +52,7 @@ import com.owncloud.android.lib.resources.files.RestoreFileVersionRemoteOperatio
 import com.owncloud.android.lib.resources.files.model.FileVersion;
 import com.owncloud.android.lib.resources.shares.ShareType;
 import com.owncloud.android.lib.resources.status.OwnCloudVersion;
-import com.owncloud.android.lib.resources.users.GetRemoteUserInfoOperation;
+import com.owncloud.android.lib.resources.users.GetUserInfoRemoteOperation;
 import com.owncloud.android.operations.CheckCurrentCredentialsOperation;
 import com.owncloud.android.operations.CopyFileOperation;
 import com.owncloud.android.operations.CreateFolderOperation;
@@ -76,6 +75,10 @@ import java.util.Iterator;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
+
+import javax.inject.Inject;
+
+import dagger.android.AndroidInjection;
 
 public class OperationsService extends Service {
 
@@ -134,6 +137,8 @@ public class OperationsService extends Service {
     private ConcurrentMap<Integer, Pair<RemoteOperation, RemoteOperationResult>>
             mUndispatchedFinishedOperations = new ConcurrentHashMap<>();
 
+    @Inject UserAccountManager accountManager;
+
     private static class Target {
         public Uri mServerUrl;
         public Account mAccount;
@@ -152,13 +157,14 @@ public class OperationsService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        AndroidInjection.inject(this);
         Log_OC.d(TAG, "Creating service");
 
         // First worker thread for most of operations
         HandlerThread thread = new HandlerThread("Operations thread",
                 Process.THREAD_PRIORITY_BACKGROUND);
         thread.start();
-        mOperationsHandler = new ServiceHandler(thread.getLooper(), this);
+        mOperationsHandler = new ServiceHandler(thread.getLooper(), this, accountManager);
         mOperationsBinder = new OperationsServiceBinder(mOperationsHandler);
 
         // Separated worker thread for download of folders (WIP)
@@ -394,14 +400,16 @@ public class OperationsService extends Service {
         private Target mLastTarget;
         private OwnCloudClient mOwnCloudClient;
         private FileDataStorageManager mStorageManager;
+        private UserAccountManager accountManager;
 
 
-        public ServiceHandler(Looper looper, OperationsService service) {
+        public ServiceHandler(Looper looper, OperationsService service, UserAccountManager accountManager) {
             super(looper);
             if (service == null) {
                 throw new IllegalArgumentException("Received invalid NULL in parameter 'service'");
             }
             mService = service;
+            this.accountManager = accountManager;
         }
 
         @Override
@@ -424,7 +432,6 @@ public class OperationsService extends Service {
             }
 
             if (next != null) {
-
                 mCurrentOperation = next.second;
                 RemoteOperationResult result = null;
                 try {
@@ -436,8 +443,7 @@ public class OperationsService extends Service {
                             mOwnCloudClient = OwnCloudClientManagerFactory.getDefaultSingleton().
                                     getClientFor(ocAccount, mService);
 
-                            OwnCloudVersion version = com.owncloud.android.authentication.AccountUtils.getServerVersion(
-                                    mLastTarget.mAccount);
+                            OwnCloudVersion version = accountManager.getServerVersion(mLastTarget.mAccount);
                             mOwnCloudClient.setOwnCloudVersion(version);
 
                             mStorageManager = new FileDataStorageManager(
@@ -445,17 +451,7 @@ public class OperationsService extends Service {
                                     mService.getContentResolver()
                             );
                         } else {
-                            OwnCloudCredentials credentials = null;
-                            if (!TextUtils.isEmpty(mLastTarget.mCookie)) {
-                                // just used for GetUserName
-                                // TODO refactor to run GetUserName as AsyncTask in the context of
-                                // AuthenticatorActivity
-                                credentials = OwnCloudCredentialsFactory.newSamlSsoCredentials(
-                                        null,                   // unknown
-                                        mLastTarget.mCookie);   // SAML SSO
-                            }
-                            OwnCloudAccount ocAccount = new OwnCloudAccount(
-                                    mLastTarget.mServerUrl, credentials);
+                            OwnCloudAccount ocAccount = new OwnCloudAccount(mLastTarget.mServerUrl, null);
                             mOwnCloudClient = OwnCloudClientManagerFactory.getDefaultSingleton().
                                     getClientFor(ocAccount, mService);
                             mStorageManager = null;
@@ -632,7 +628,7 @@ public class OperationsService extends Service {
                         break;
 
                     case ACTION_GET_USER_NAME:
-                        operation = new GetRemoteUserInfoOperation();
+                        operation = new GetUserInfoRemoteOperation();
                         break;
 
                     case ACTION_RENAME:

@@ -7,7 +7,7 @@
 import com.github.spotbugs.SpotBugsTask
 
 buildscript {
-    ext.kotlin_version = '1.3.31'
+    ext.kotlin_version = '1.3.41'
     repositories {
         google()
         jcenter()
@@ -26,29 +26,38 @@ buildscript {
         }
         classpath 'gradle.plugin.com.github.spotbugs:spotbugs-gradle-plugin:1.6.6'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath "io.gitlab.arturbosch.detekt:detekt-gradle-plugin:1.0.0-RC14"
     }
 }
 
 apply plugin: 'com.android.application'
+
 apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
+apply plugin: 'kotlin-kapt'
 apply plugin: 'checkstyle'
 apply plugin: 'pmd'
-apply plugin: 'findbugs'
 apply plugin: 'jacoco-android'
 apply plugin: "com.github.spotbugs"
+apply plugin: "io.gitlab.arturbosch.detekt"
 
-configurations.all {
-    exclude group: 'com.google.firebase', module: 'firebase-core'
-    exclude group: 'com.google.firebase', module: 'firebase-analytics'
-    exclude group: 'com.google.firebase', module: 'firebase-measurement-connector'
+configurations {
+    ktlint
 
-    // check for updates every build
-    resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+    all {
+        exclude group: 'com.google.firebase', module: 'firebase-core'
+        exclude group: 'com.google.firebase', module: 'firebase-analytics'
+        exclude group: 'com.google.firebase', module: 'firebase-measurement-connector'
+
+        // check for updates every build
+        resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+    }
 }
 
 ext {
     jacocoVersion = "0.8.2"
+    daggerVersion = "2.24"
+    androidLibraryVersion = "master-SNAPSHOT"
 
     travisBuild = System.getenv("TRAVIS") == "true"
 
@@ -69,12 +78,12 @@ repositories {
 
 // semantic versioning for version code
 def versionMajor = 3
-def versionMinor = 7
+def versionMinor = 8
 def versionPatch = 0
 def versionBuild = 0 // 0-50=Alpha / 51-98=RC / 90-99=stable
 
 def taskRequest = getGradle().getStartParameter().getTaskRequests().toString()
-if (taskRequest.contains("Gplay") || taskRequest.contains("findbugs") || taskRequest.contains("lint")) {
+if (taskRequest.contains("Gplay") || taskRequest.contains("lint")) {
     apply from: 'gplay.gradle'
 }
 
@@ -125,7 +134,7 @@ android {
 
         buildTypes {
             debug {
-                testCoverageEnabled true
+                testCoverageEnabled (project.hasProperty('coverage'))
             }
         }
 
@@ -144,8 +153,8 @@ android {
             versionDev {
                 applicationId "com.nextcloud.android.beta"
                 dimension "default"
-                versionCode 20190520
-                versionName "20190520"
+                versionCode 20190808
+                versionName "20190808"
             }
 
             qa {
@@ -154,6 +163,10 @@ android {
                 versionCode 1
                 versionName "1"
             }
+        }
+
+        testOptions {
+            unitTests.returnDefaultValues = true
         }
     }
 
@@ -200,27 +213,6 @@ android {
         }
     }
 
-    tasks.register("findbugs", FindBugs) {
-        ignoreFailures = false
-        effort = "max"
-        reportLevel = "medium"
-        classes = fileTree("$project.buildDir/intermediates/javac/gplayDebug/compileGplayDebugJavaWithJavac/classes/")
-        excludeFilter = file("${project.rootDir}/findbugs-filter.xml")
-        source = fileTree('src/main/java')
-        pluginClasspath = project.configurations.findbugsPlugins
-        classpath = files()
-        include '**/*.java'
-        exclude '**/gen/**'
-
-        reports {
-            xml.enabled = false
-            html.enabled = true
-            html {
-                destination = file("$project.buildDir/reports/findbugs/findbugs.html")
-            }
-        }
-    }
-
     android.applicationVariants.all { variant ->
         String variantName = variant.name
         String capVariantName = variantName.substring(0, 1).toUpperCase() + variantName.substring(1)
@@ -229,7 +221,7 @@ android {
             effort = "max"
             reportLevel = "medium"
             classes = fileTree("$project.buildDir/intermediates/javac/${variantName}/compile${capVariantName}JavaWithJavac/classes/")
-            excludeFilter = file("${project.rootDir}/findbugs-filter.xml")
+            excludeFilter = file("${project.rootDir}/spotbugs-filter.xml")
             pluginClasspath = project.configurations.spotbugsPlugins
             source = fileTree('src/main/java')
             classpath = files()
@@ -246,7 +238,7 @@ android {
         }
     }
 
-    check.dependsOn 'checkstyle', 'findbugs', 'pmd', 'lint'
+    check.dependsOn 'checkstyle', 'spotbugs', 'pmd', 'lint', 'ktlint'
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
@@ -258,10 +250,10 @@ dependencies {
     // dependencies for app building
     implementation 'androidx.multidex:multidex:2.0.1'
 //    implementation project('nextcloud-android-library')
-    genericImplementation 'com.github.nextcloud:android-library:master-SNAPSHOT'
-    gplayImplementation 'com.github.nextcloud:android-library:master-SNAPSHOT'
-    versionDevImplementation 'com.github.nextcloud:android-library:master-SNAPSHOT'
-    qaImplementation 'com.github.nextcloud:android-library:master-SNAPSHOT'
+    genericImplementation "com.github.nextcloud:android-library:$androidLibraryVersion"
+    gplayImplementation "com.github.nextcloud:android-library:$androidLibraryVersion"
+    versionDevImplementation "com.github.nextcloud:android-library:$androidLibraryVersion"
+    qaImplementation "com.github.nextcloud:android-library:$androidLibraryVersion"
     implementation 'androidx.constraintlayout:constraintlayout:1.1.3'
     implementation 'androidx.legacy:legacy-support-v4:1.0.0'
     implementation 'com.google.android.material:material:1.0.0'
@@ -269,12 +261,13 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.0.2'
     implementation 'androidx.cardview:cardview:1.0.0'
     implementation 'androidx.exifinterface:exifinterface:1.0.0'
+    implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.0.0"
     implementation 'com.github.albfernandez:juniversalchardet:2.0.3' // need this version for Android <7
     implementation 'com.google.code.findbugs:annotations:2.0.1'
     implementation 'commons-io:commons-io:2.6'
     implementation 'com.github.tobiaskaminsky:android-job:v1.2.6.1' // 'com.github.evernote:android-job:v1.2.5'
     implementation 'com.jakewharton:butterknife:10.1.0'
-    annotationProcessor 'com.jakewharton:butterknife-compiler:10.1.0'
+    kapt 'com.jakewharton:butterknife-compiler:10.1.0'
     implementation 'org.greenrobot:eventbus:3.1.1'
     implementation 'com.googlecode.ez-vcard:ez-vcard:0.10.5'
     implementation 'org.lukhnos:nnio:0.2'
@@ -286,47 +279,53 @@ dependencies {
     implementation 'com.github.tobiaskaminsky:qrcodescanner:0.1.2.2' // 'com.github.blikoon:QRCodeScanner:0.1.2'
     implementation 'com.google.android:flexbox:1.1.0'
     implementation 'org.parceler:parceler-api:1.1.12'
-    annotationProcessor 'org.parceler:parceler:1.1.12'
+    kapt 'org.parceler:parceler:1.1.12'
     implementation('com.github.bumptech.glide:glide:3.7.0') {
         exclude group: "com.android.support"
     }
-    implementation 'com.caverock:androidsvg:1.3'
-    implementation 'androidx.annotation:annotation:1.0.2'
+    implementation 'com.caverock:androidsvg:1.4'
+    implementation 'androidx.annotation:annotation:1.1.0'
     implementation 'com.google.code.gson:gson:2.8.5'
     implementation 'org.jetbrains:annotations:17.0.0'
 
-    spotbugsPlugins 'com.h3xstream.findsecbugs:findsecbugs-plugin:1.9.0'
-    spotbugsPlugins 'com.mebigfatguy.fb-contrib:fb-contrib:7.4.5'
+    implementation 'com.github.cotechde.hwsecurity:hwsecurity-fido:2.4.1'
 
-    implementation 'com.google.dagger:dagger:2.22.1'
-    implementation 'com.google.dagger:dagger-android:2.22.1'
-    implementation 'com.google.dagger:dagger-android-support:2.22.1'
-    annotationProcessor 'com.google.dagger:dagger-compiler:2.22.1'
-    annotationProcessor 'com.google.dagger:dagger-android-processor:2.22.1'
+    spotbugsPlugins 'com.h3xstream.findsecbugs:findsecbugs-plugin:1.9.0'
+    spotbugsPlugins 'com.mebigfatguy.fb-contrib:fb-contrib:7.4.6'
+
+    implementation "com.google.dagger:dagger:$daggerVersion"
+    implementation "com.google.dagger:dagger-android:$daggerVersion"
+    implementation "com.google.dagger:dagger-android-support:$daggerVersion"
+    kapt "com.google.dagger:dagger-compiler:$daggerVersion"
+    kapt "com.google.dagger:dagger-android-processor:$daggerVersion"
 
     compileOnly "org.projectlombok:lombok:1.18.8"
     annotationProcessor "org.projectlombok:lombok:1.18.8"
 
+    ktlint "com.pinterest:ktlint:0.34.2"
+
     // dependencies for local unit tests
     testImplementation 'junit:junit:4.12'
-    testImplementation 'org.mockito:mockito-core:2.27.0'
-    testImplementation 'androidx.test:core:1.1.0'
+    testImplementation 'org.mockito:mockito-core:3.0.0'
+    testImplementation 'androidx.test:core:1.2.0'
     testImplementation 'org.powermock:powermock-core:2.0.2'
     testImplementation 'org.powermock:powermock-module-junit4:2.0.2'
     testImplementation 'org.powermock:powermock-api-mockito2:2.0.2'
-    testImplementation 'org.json:json:20180813'
+    testImplementation 'org.json:json:20190722'
+    testImplementation "com.nhaarman.mockitokotlin2:mockito-kotlin:2.1.0"
+    testImplementation "androidx.arch.core:core-testing:2.0.1"
 
     // dependencies for instrumented tests
     // JUnit4 Rules
-    androidTestImplementation 'androidx.test.ext:junit:1.1.0'
-    androidTestImplementation 'androidx.test:rules:1.1.1'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.1'
+    androidTestImplementation 'androidx.test:rules:1.2.0'
     // Android JUnit Runner
-    androidTestImplementation 'androidx.test:runner:1.1.1'
+    androidTestImplementation 'androidx.test:runner:1.2.0'
 
     // Espresso core
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.1'
-    androidTestImplementation 'androidx.test.espresso:espresso-contrib:3.1.1'
-    androidTestImplementation 'org.mockito:mockito-core:2.27.0'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
+    androidTestImplementation 'androidx.test.espresso:espresso-contrib:3.2.0'
+    androidTestImplementation 'org.mockito:mockito-core:2.28.2'
     // UIAutomator - for cross-app UI tests, and to grant screen is turned on in Espresso tests
     // androidTestImplementation 'androidx.test.uiautomator:uiautomator:2.2.0'
     // fix conflict in dependencies; see http://g.co/androidstudio/app-test-app-conflict for details
@@ -376,4 +375,28 @@ tasks.register("combinedTestReport", JacocoReport) {
     executionData = fileTree(dir: project.buildDir, includes: [
         'jacoco/testGplayDebugUnitTest.exec', 'outputs/code-coverage/connected/flavors/GPLAY/*coverage.ec'
     ])
+}
+
+task ktlint(type: JavaExec, group: "verification") {
+    description = "Check Kotlin code style."
+    main = "com.pinterest.ktlint.Main"
+    classpath = configurations.ktlint
+    args "--reporter=plain", "--reporter=plain,output=${buildDir}/ktlint.txt,src/**/*.kt"
+}
+
+task ktlintFormat(type: JavaExec, group: "formatting") {
+    description = "Fix Kotlin code style deviations."
+    main = "com.pinterest.ktlint.Main"
+    classpath = configurations.ktlint
+    args "-F", "src/**/*.kt"
+}
+
+detekt {
+    reports {
+        xml {
+            enabled = false
+        }
+    }
+    config = files("detekt.yml")
+    input = files("src/")
 }

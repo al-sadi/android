@@ -31,7 +31,6 @@ import android.os.AsyncTask;
 import com.nextcloud.client.account.UserAccountManager;
 import com.owncloud.android.MainApp;
 import com.owncloud.android.R;
-import com.owncloud.android.authentication.AccountUtils;
 import com.owncloud.android.lib.common.OwnCloudAccount;
 import com.owncloud.android.lib.common.OwnCloudClient;
 import com.owncloud.android.lib.common.OwnCloudClientManagerFactory;
@@ -60,7 +59,7 @@ public class ActivitiesServiceApiImpl implements ActivitiesServiceApi {
     @Override
     public void getAllActivities(String pageUrl, ActivitiesServiceCallback<List<Object>> callback) {
         Account account = accountManager.getCurrentAccount();
-        GetActivityListTask getActivityListTask = new GetActivityListTask(account, pageUrl, callback);
+        GetActivityListTask getActivityListTask = new GetActivityListTask(account, accountManager, pageUrl, callback);
         getActivityListTask.execute();
     }
 
@@ -69,12 +68,16 @@ public class ActivitiesServiceApiImpl implements ActivitiesServiceApi {
         private final ActivitiesServiceCallback<List<Object>> callback;
         private List<Object> activities;
         private Account account;
+        private UserAccountManager accountManager;
         private String pageUrl;
         private String errorMessage;
         private OwnCloudClient ownCloudClient;
 
-        private GetActivityListTask(Account account, String pageUrl, ActivitiesServiceCallback<List<Object>> callback) {
+        private GetActivityListTask(Account account,
+                                    UserAccountManager accountManager,
+                                    String pageUrl, ActivitiesServiceCallback<List<Object>> callback) {
             this.account = account;
+            this.accountManager = accountManager;
             this.pageUrl = pageUrl;
             this.callback = callback;
             activities = new ArrayList<>();
@@ -89,7 +92,7 @@ public class ActivitiesServiceApiImpl implements ActivitiesServiceApi {
                 ocAccount = new OwnCloudAccount(account, context);
                 ownCloudClient = OwnCloudClientManagerFactory.getDefaultSingleton().
                         getClientFor(ocAccount, MainApp.getAppContext());
-                ownCloudClient.setOwnCloudVersion(AccountUtils.getServerVersion(account));
+                ownCloudClient.setOwnCloudVersion(accountManager.getServerVersion(account));
 
                 GetActivitiesRemoteOperation getRemoteNotificationOperation = new GetActivitiesRemoteOperation();
                 if (pageUrl != null) {

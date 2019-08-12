@@ -24,8 +24,8 @@ import android.accounts.Account;
 import android.content.res.Resources;
 import android.view.Menu;
 
+import com.nextcloud.client.account.UserAccountManager;
 import com.owncloud.android.R;
-import com.owncloud.android.authentication.AccountUtils;
 import com.owncloud.android.lib.resources.status.OCCapability;
 import com.owncloud.android.lib.resources.status.OwnCloudVersion;
 
@@ -38,14 +38,10 @@ public final class DrawerMenuUtil {
     private DrawerMenuUtil() {
     }
 
-    public static void filterForBottomToolbarMenuItems(Menu menu, Resources resources) {
-        if (resources.getBoolean(R.bool.bottom_toolbar_enabled)) {
-            filterMenuItems(menu, R.id.nav_all_files, R.id.nav_settings, R.id.nav_favorites, R.id.nav_photos);
-        }
-    }
-
-    public static void filterSearchMenuItems(Menu menu, Account account, Resources resources) {
-        boolean hasSearchSupport = AccountUtils.hasSearchSupport(account);
+    public static void filterSearchMenuItems(Menu menu,
+                                             Account account,
+                                             Resources resources,
+                                             boolean hasSearchSupport) {
         if (account != null && !hasSearchSupport) {
             filterMenuItems(menu, R.id.nav_photos, R.id.nav_favorites, R.id.nav_videos);
         }
@@ -67,9 +63,12 @@ public final class DrawerMenuUtil {
         }
     }
 
-    public static void filterTrashbinMenuItem(Menu menu, @Nullable Account account, @Nullable OCCapability capability) {
+    public static void filterTrashbinMenuItem(Menu menu,
+                                              @Nullable Account account,
+                                              @Nullable OCCapability capability,
+                                              UserAccountManager accountManager) {
         if (account != null && capability != null &&
-                (AccountUtils.getServerVersion(account).compareTo(OwnCloudVersion.nextcloud_14) < 0 ||
+                (accountManager.getServerVersion(account).compareTo(OwnCloudVersion.nextcloud_14) < 0 ||
                         capability.getFilesUndelete().isFalse() || capability.getFilesUndelete().isUnknown())) {
             filterMenuItems(menu, R.id.nav_trashbin);
         }

@@ -74,6 +74,16 @@
 
     <uses-sdk tools:overrideLibrary="com.blikoon.qrcodescanner" />
 
+    <!-- Some Chromebooks don't support touch. Although not essential,
+         it's a good idea to explicitly include this declaration. -->
+    <uses-feature
+        android:name="android.hardware.touchscreen"
+        android:required="false" />
+
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+
     <application
         android:name=".MainApp"
         android:icon="@mipmap/ic_launcher"
@@ -85,6 +95,7 @@
         android:supportsRtl="true"
         android:installLocation="internalOnly"
         android:manageSpaceActivity="com.owncloud.android.ui.activity.ManageSpaceActivity"
+        android:usesCleartextTraffic="true"
         tools:ignore="UnusedAttribute">
 
         <uses-library
@@ -307,17 +318,22 @@
         <activity android:name=".ui.activity.ConflictsResolveActivity"/>
         <activity android:name=".ui.activity.ErrorsWhileCopyingHandlerActivity"/>
 
-        <activity android:name=".ui.activity.LogHistoryActivity"/>
+        <activity android:name=".ui.activity.LogsActivity"/>
 
-        <activity android:name=".ui.errorhandling.ErrorShowActivity" />
+        <activity android:name="com.nextcloud.client.errorhandling.ShowErrorActivity"
+            android:theme="@style/Theme.ownCloud.Toolbar"
+            android:process=":crash"
+            android:excludeFromRecents="true"
+            android:finishOnTaskLaunch="true"
+            android:launchMode="singleInstance" />
         <activity android:name=".ui.activity.UploadListActivity" />
         <activity
             android:name=".ui.trashbin.TrashbinActivity"
             android:configChanges="orientation|screenSize|keyboardHidden"/>
-        <activity android:name="com.nextcloud.client.whatsnew.WhatsNewActivity"
+        <activity android:name="com.nextcloud.client.onboarding.WhatsNewActivity"
                   android:theme="@style/Theme.ownCloud.noActionBar.Login" />
         <activity
-            android:name=".ui.activity.FirstRunActivity"
+            android:name="com.nextcloud.client.onboarding.FirstRunActivity"
             android:theme="@style/Theme.ownCloud.noActionBar.Login"
             android:configChanges="orientation|screenSize"/>
 
@@ -375,6 +391,10 @@
             android:name=".ui.activity.SsoGrantPermissionActivity"
             android:exported="true"
             android:theme="@style/Theme.ownCloud.Dialog.NoTitle" />
+
+        <activity
+            android:name="com.nextcloud.client.etm.EtmActivity"
+            android:theme="@style/Theme.ownCloud.Toolbar"/>
     </application>
 
 </manifest>

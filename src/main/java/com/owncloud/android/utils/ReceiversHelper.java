@@ -30,6 +30,8 @@ import android.content.IntentFilter;
 import com.evernote.android.job.JobRequest;
 import com.evernote.android.job.util.Device;
 import com.nextcloud.client.account.UserAccountManager;
+import com.nextcloud.client.device.PowerManagementService;
+import com.nextcloud.client.network.ConnectivityService;
 import com.owncloud.android.MainApp;
 import com.owncloud.android.datamodel.UploadsStorageManager;
 
@@ -42,10 +44,10 @@ public final class ReceiversHelper {
         // utility class -> private constructor
     }
 
-    public static void registerNetworkChangeReceiver(
-        final UploadsStorageManager uploadsStorageManager,
-        final UserAccountManager accountManager
-    ) {
+    public static void registerNetworkChangeReceiver(final UploadsStorageManager uploadsStorageManager,
+                                                     final UserAccountManager accountManager,
+                                                     final ConnectivityService connectivityService,
+                                                     final PowerManagementService powerManagementService) {
         Context context = MainApp.getAppContext();
 
         IntentFilter intentFilter = new IntentFilter();
@@ -56,7 +58,10 @@ public final class ReceiversHelper {
             @Override
             public void onReceive(Context context, Intent intent) {
                 if (!Device.getNetworkType(context).equals(JobRequest.NetworkType.ANY)) {
-                    FilesSyncHelper.restartJobsIfNeeded(uploadsStorageManager, accountManager);
+                    FilesSyncHelper.restartJobsIfNeeded(uploadsStorageManager,
+                                                        accountManager,
+                                                        connectivityService,
+                                                        powerManagementService);
                 }
             }
         };
@@ -66,7 +71,9 @@ public final class ReceiversHelper {
 
     public static void registerPowerChangeReceiver(
         final UploadsStorageManager uploadsStorageManager,
-        final UserAccountManager accountManager
+        final UserAccountManager accountManager,
+        final ConnectivityService connectivityService,
+        final PowerManagementService powerManagementService
     ) {
         Context context = MainApp.getAppContext();
 
@@ -78,7 +85,10 @@ public final class ReceiversHelper {
             @Override
             public void onReceive(Context context, Intent intent) {
                 if (Intent.ACTION_POWER_CONNECTED.equals(intent.getAction())) {
-                    FilesSyncHelper.restartJobsIfNeeded(uploadsStorageManager, accountManager);
+                    FilesSyncHelper.restartJobsIfNeeded(uploadsStorageManager,
+                                                        accountManager,
+                                                        connectivityService,
+                                                        powerManagementService);
                 }
             }
         };
@@ -88,8 +98,10 @@ public final class ReceiversHelper {
 
     public static void registerPowerSaveReceiver(
         final UploadsStorageManager uploadsStorageManager,
-        final UserAccountManager accountManager
-    ) {
+        final UserAccountManager accountManager,
+        final ConnectivityService connectivityService,
+        final PowerManagementService powerManagementService
+        ) {
         Context context = MainApp.getAppContext();
 
         IntentFilter intentFilter = new IntentFilter();
@@ -98,8 +110,11 @@ public final class ReceiversHelper {
         BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                if (!PowerUtils.isPowerSaveMode(context)) {
-                    FilesSyncHelper.restartJobsIfNeeded(uploadsStorageManager, accountManager);
+                if (!powerManagementService.isPowerSavingEnabled()) {
+                    FilesSyncHelper.restartJobsIfNeeded(uploadsStorageManager,
+                                                        accountManager,
+                                                        connectivityService,
+                                                        powerManagementService);
                 }
             }
         };

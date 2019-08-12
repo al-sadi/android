@@ -57,10 +57,10 @@ import com.bumptech.glide.request.target.SimpleTarget;
 import com.google.android.material.navigation.NavigationView;
 import com.nextcloud.client.account.UserAccountManager;
 import com.nextcloud.client.di.Injectable;
+import com.nextcloud.client.onboarding.FirstRunActivity;
 import com.nextcloud.client.preferences.AppPreferences;
 import com.owncloud.android.MainApp;
 import com.owncloud.android.R;
-import com.owncloud.android.authentication.AccountUtils;
 import com.owncloud.android.authentication.PassCodeManager;
 import com.owncloud.android.datamodel.ArbitraryDataProvider;
 import com.owncloud.android.datamodel.ExternalLinksProvider;
@@ -79,14 +79,13 @@ import com.owncloud.android.lib.resources.files.SearchRemoteOperation;
 import com.owncloud.android.lib.resources.status.CapabilityBooleanType;
 import com.owncloud.android.lib.resources.status.OCCapability;
 import com.owncloud.android.lib.resources.status.OwnCloudVersion;
-import com.owncloud.android.lib.resources.users.GetRemoteUserInfoOperation;
+import com.owncloud.android.lib.resources.users.GetUserInfoRemoteOperation;
 import com.owncloud.android.operations.GetCapabilitiesOperation;
 import com.owncloud.android.ui.TextDrawable;
 import com.owncloud.android.ui.activities.ActivitiesActivity;
 import com.owncloud.android.ui.events.AccountRemovedEvent;
 import com.owncloud.android.ui.events.ChangeMenuEvent;
 import com.owncloud.android.ui.events.DummyDrawerEvent;
-import com.owncloud.android.ui.events.MenuItemClickEvent;
 import com.owncloud.android.ui.events.SearchEvent;
 import com.owncloud.android.ui.fragment.OCFileListFragment;
 import com.owncloud.android.ui.trashbin.TrashbinActivity;
@@ -366,9 +365,10 @@ public abstract class DrawerActivity extends ToolbarActivity
             capability = storageManager.getCapability(account.name);
         }
 
-        DrawerMenuUtil.filterForBottomToolbarMenuItems(menu, getResources());
-        DrawerMenuUtil.filterSearchMenuItems(menu, account, getResources());
-        DrawerMenuUtil.filterTrashbinMenuItem(menu, account, capability);
+        boolean hasSearchSupport = accountManager.getServerVersion(account).isSearchSupported();
+
+        DrawerMenuUtil.filterSearchMenuItems(menu, account, getResources(), hasSearchSupport);
+        DrawerMenuUtil.filterTrashbinMenuItem(menu, account, capability, accountManager);
         DrawerMenuUtil.filterActivityMenuItem(menu, capability);
 
         DrawerMenuUtil.setupHomeMenuItem(menu, getResources());
@@ -382,23 +382,6 @@ public abstract class DrawerActivity extends ToolbarActivity
         DrawerMenuUtil.removeMenuItem(menu, R.id.nav_synced_folders,
                 getResources().getBoolean(R.bool.syncedFolder_light));
         DrawerMenuUtil.removeMenuItem(menu, R.id.nav_logout, !getResources().getBoolean(R.bool.show_drawer_logout));
-    }
-
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    public void onMessageEvent(MenuItemClickEvent event) {
-        unsetAllDrawerMenuItems();
-
-        switch (event.menuItem.getItemId()) {
-            case R.id.nav_bar_files:
-                showFiles(false);
-                break;
-            case R.id.nav_bar_settings:
-                Intent settingsIntent = new Intent(getApplicationContext(), SettingsActivity.class);
-                startActivity(settingsIntent);
-                break;
-            default:
-                break;
-        }
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
@@ -554,7 +537,7 @@ public abstract class DrawerActivity extends ToolbarActivity
     private void accountClicked(int hashCode) {
         final Account currentAccount = accountManager.getCurrentAccount();
         if (currentAccount != null && currentAccount.hashCode() != hashCode &&
-            AccountUtils.setCurrentOwnCloudAccount(getApplicationContext(), hashCode)) {
+            accountManager.setCurrentOwnCloudAccount(hashCode)) {
             fetchExternalLinks(true);
             restart();
         }
@@ -853,10 +836,10 @@ public abstract class DrawerActivity extends ToolbarActivity
      *  @param usedSpace  the used space
      * @param totalSpace the total space
      * @param relative   the percentage of space already used
-     * @param quotaValue {@link GetRemoteUserInfoOperation#SPACE_UNLIMITED} or other to determinate state
+     * @param quotaValue {@link GetUserInfoRemoteOperation#SPACE_UNLIMITED} or other to determinate state
      */
     private void setQuotaInformation(long usedSpace, long totalSpace, int relative, long quotaValue) {
-        if (GetRemoteUserInfoOperation.SPACE_UNLIMITED == quotaValue) {
+        if (GetUserInfoRemoteOperation.SPACE_UNLIMITED == quotaValue) {
             mQuotaTextPercentage.setText(String.format(
                     getString(R.string.drawer_quota_unlimited),
                     DisplayUtils.bytesToHumanReadable(usedSpace)));
@@ -995,7 +978,7 @@ public abstract class DrawerActivity extends ToolbarActivity
                 }
 
                 final Context context = MainApp.getAppContext();
-                RemoteOperationResult result = new GetRemoteUserInfoOperation().execute(currentAccount, context);
+                RemoteOperationResult result = new GetUserInfoRemoteOperation().execute(currentAccount, context);
 
                 if (result.isSuccess() && result.getData() != null) {
                     final UserInfo userInfo = (UserInfo) result.getData().get(0);
@@ -1010,8 +993,8 @@ public abstract class DrawerActivity extends ToolbarActivity
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                if (quotaValue > 0 || quotaValue == GetRemoteUserInfoOperation.SPACE_UNLIMITED
-                                        || quotaValue == GetRemoteUserInfoOperation.QUOTA_LIMIT_INFO_NOT_AVAILABLE) {
+                                if (quotaValue > 0 || quotaValue == GetUserInfoRemoteOperation.SPACE_UNLIMITED
+                                    || quotaValue == GetUserInfoRemoteOperation.QUOTA_LIMIT_INFO_NOT_AVAILABLE) {
                                     /*
                                      * show quota in case
                                      * it is available and calculated (> 0) or
@@ -1131,7 +1114,7 @@ public abstract class DrawerActivity extends ToolbarActivity
                         };
 
                         int backgroundResource;
-                        OwnCloudVersion ownCloudVersion = AccountUtils.getServerVersion(getAccount());
+                        OwnCloudVersion ownCloudVersion = accountManager.getServerVersion(getAccount());
                         if (ownCloudVersion.compareTo(OwnCloudVersion.nextcloud_13) >= 0) {
                             backgroundResource = R.drawable.background_nc13;
                         } else {

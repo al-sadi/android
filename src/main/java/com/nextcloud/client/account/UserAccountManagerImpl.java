@@ -23,20 +23,22 @@ package com.nextcloud.client.account;
 import android.accounts.Account;
 import android.accounts.AccountManager;
 import android.content.Context;
+import android.content.SharedPreferences;
+import android.preference.PreferenceManager;
 import android.text.TextUtils;
 
-import com.nextcloud.client.preferences.AppPreferences;
-import com.nextcloud.client.preferences.AppPreferencesImpl;
 import com.owncloud.android.MainApp;
 import com.owncloud.android.R;
-import com.owncloud.android.authentication.AccountUtils;
+import com.owncloud.android.datamodel.ArbitraryDataProvider;
+import com.owncloud.android.datamodel.OCFile;
 import com.owncloud.android.lib.common.OwnCloudAccount;
 import com.owncloud.android.lib.common.OwnCloudClient;
 import com.owncloud.android.lib.common.OwnCloudClientManagerFactory;
 import com.owncloud.android.lib.common.UserInfo;
 import com.owncloud.android.lib.common.operations.RemoteOperationResult;
 import com.owncloud.android.lib.common.utils.Log_OC;
-import com.owncloud.android.lib.resources.users.GetRemoteUserInfoOperation;
+import com.owncloud.android.lib.resources.status.OwnCloudVersion;
+import com.owncloud.android.lib.resources.users.GetUserInfoRemoteOperation;
 
 import javax.inject.Inject;
 
@@ -45,10 +47,16 @@ import androidx.annotation.Nullable;
 
 public class UserAccountManagerImpl implements UserAccountManager {
 
-    private static final String TAG = AccountUtils.class.getSimpleName();
+    private static final String TAG = UserAccountManagerImpl.class.getSimpleName();
+    private static final String PREF_SELECT_OC_ACCOUNT = "select_oc_account";
 
     private Context context;
     private AccountManager accountManager;
+
+    public static UserAccountManagerImpl fromContext(Context context) {
+        AccountManager am = (AccountManager)context.getSystemService(Context.ACCOUNT_SERVICE);
+        return new UserAccountManagerImpl(context, am);
+    }
 
     @Inject
     public UserAccountManagerImpl(
@@ -60,14 +68,86 @@ public class UserAccountManagerImpl implements UserAccountManager {
     }
 
     @Override
+    public void removeAllAccounts() {
+        for (Account account : getAccounts()) {
+            accountManager.removeAccount(account, null, null);
+        }
+    }
+
+    @Override
     @NonNull
     public Account[] getAccounts() {
         return accountManager.getAccountsByType(getAccountType());
     }
 
+    @Override
+    public boolean exists(Account account) {
+        Account[] nextcloudAccounts = getAccounts();
+
+        if (account != null && account.name != null) {
+            int lastAtPos = account.name.lastIndexOf('@');
+            String hostAndPort = account.name.substring(lastAtPos + 1);
+            String username = account.name.substring(0, lastAtPos);
+            String otherHostAndPort;
+            String otherUsername;
+            for (Account otherAccount : nextcloudAccounts) {
+                lastAtPos = otherAccount.name.lastIndexOf('@');
+                otherHostAndPort = otherAccount.name.substring(lastAtPos + 1);
+                otherUsername = otherAccount.name.substring(0, lastAtPos);
+                if (otherHostAndPort.equals(hostAndPort) &&
+                    otherUsername.equalsIgnoreCase(username)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     @Nullable
     public Account getCurrentAccount() {
-        return AccountUtils.getCurrentOwnCloudAccount(context);
+        Account[] ocAccounts = getAccounts();
+        Account defaultAccount = null;
+
+        ArbitraryDataProvider arbitraryDataProvider = new ArbitraryDataProvider(context.getContentResolver());
+
+        SharedPreferences appPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+        String accountName = appPreferences.getString(PREF_SELECT_OC_ACCOUNT, null);
+
+        // account validation: the saved account MUST be in the list of ownCloud Accounts known by the AccountManager
+        if (accountName != null) {
+            for (Account account : ocAccounts) {
+                if (account.name.equals(accountName)) {
+                    defaultAccount = account;
+                    break;
+                }
+            }
+        }
+
+        if (defaultAccount == null && ocAccounts.length > 0) {
+            // take first which is not pending for removal account as fallback
+            for (Account account: ocAccounts) {
+                boolean pendingForRemoval = arbitraryDataProvider.getBooleanValue(account,
+                                                                                  PENDING_FOR_REMOVAL);
+
+                if (!pendingForRemoval) {
+                    defaultAccount = account;
+                    break;
+                }
+            }
+        }
+
+        return defaultAccount;
+    }
+
+    @Override
+    @Nullable
+    public OwnCloudAccount getCurrentOwnCloudAccount() {
+        try {
+            Account currentPlatformAccount = getCurrentAccount();
+            return new OwnCloudAccount(currentPlatformAccount, context);
+        } catch (com.owncloud.android.lib.common.accounts.AccountUtils.AccountNotFoundException ex) {
+            return null;
+        }
     }
 
     @Override
@@ -82,19 +162,85 @@ public class UserAccountManagerImpl implements UserAccountManager {
         return null;
     }
 
-    public void migrateUserId() {
-        AppPreferences appPreferences = AppPreferencesImpl.fromContext(context);
+    @Override
+    public boolean setCurrentOwnCloudAccount(String accountName) {
+        boolean result = false;
+        if (accountName != null) {
+            for (final Account account : getAccounts()) {
+                if (accountName.equals(account.name)) {
+                    SharedPreferences.Editor appPrefs = PreferenceManager.getDefaultSharedPreferences(context).edit();
+                    appPrefs.putString(PREF_SELECT_OC_ACCOUNT, accountName);
+                    appPrefs.apply();
+                    result = true;
+                    break;
+                }
+            }
+        }
+        return result;
+    }
 
-        if (appPreferences.isUserIdMigrated()) {
-            // migration done
-            return;
+    @Override
+    public boolean setCurrentOwnCloudAccount(int hashCode) {
+        boolean result = false;
+        if (hashCode != 0) {
+            for (final Account account : getAccounts()) {
+                if (hashCode == account.hashCode()) {
+                    SharedPreferences.Editor appPrefs = PreferenceManager.getDefaultSharedPreferences(context).edit();
+                    appPrefs.putString(PREF_SELECT_OC_ACCOUNT, account.name);
+                    appPrefs.apply();
+                    result = true;
+                    break;
+                }
+            }
+        }
+        return result;
+    }
+
+    @Override
+    @NonNull
+    public OwnCloudVersion getServerVersion(Account account) {
+        OwnCloudVersion serverVersion = MainApp.MINIMUM_SUPPORTED_SERVER_VERSION;
+
+        if (account != null) {
+            AccountManager accountMgr = AccountManager.get(MainApp.getAppContext());
+            String serverVersionStr = accountMgr.getUserData(account, com.owncloud.android.lib.common.accounts.AccountUtils.Constants.KEY_OC_VERSION);
+
+            if (serverVersionStr != null) {
+                serverVersion = new OwnCloudVersion(serverVersionStr);
+            }
         }
 
+        return serverVersion;
+    }
+
+    @Override
+    public boolean isSearchSupported(Account account) {
+        return account != null && getServerVersion(account).isSearchSupported();
+    }
+
+    @Override
+    public boolean isMediaStreamingSupported(Account account) {
+        return account != null && getServerVersion(account).isMediaStreamingSupported();
+    }
+
+    @Override
+    public void resetOwnCloudAccount() {
+        SharedPreferences.Editor appPrefs = PreferenceManager.getDefaultSharedPreferences(context).edit();
+        appPrefs.putString(PREF_SELECT_OC_ACCOUNT, null);
+        appPrefs.apply();
+    }
+
+    @Override
+    public  boolean accountOwnsFile(OCFile file, Account account) {
+        return !TextUtils.isEmpty(file.getOwnerId()) && account.name.split("@")[0].equals(file.getOwnerId());
+    }
+
+    public boolean migrateUserId() {
         boolean success = false;
         Account[] ocAccounts = accountManager.getAccountsByType(MainApp.getAccountType(context));
         String userId;
         String displayName;
-        GetRemoteUserInfoOperation remoteUserNameOperation = new GetRemoteUserInfoOperation();
+        GetUserInfoRemoteOperation remoteUserNameOperation = new GetUserInfoRemoteOperation();
 
         for (Account account : ocAccounts) {
             String storedUserId = accountManager.getUserData(account, com.owncloud.android.lib.common.accounts.AccountUtils.Constants.KEY_USER_ID);
@@ -135,9 +281,7 @@ public class UserAccountManagerImpl implements UserAccountManager {
             success = true;
         }
 
-        if (success) {
-            appPreferences.setMigratedUserId(true);
-        }
+        return success;
     }
 
     private String getAccountType() {

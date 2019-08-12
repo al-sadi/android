@@ -54,11 +54,11 @@ import android.widget.Toast;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.snackbar.Snackbar;
 import com.nextcloud.client.account.UserAccountManager;
+import com.nextcloud.client.device.DeviceInfo;
 import com.nextcloud.client.di.Injectable;
 import com.nextcloud.client.preferences.AppPreferences;
 import com.owncloud.android.MainApp;
 import com.owncloud.android.R;
-import com.owncloud.android.authentication.AccountUtils;
 import com.owncloud.android.datamodel.ArbitraryDataProvider;
 import com.owncloud.android.datamodel.FileDataStorageManager;
 import com.owncloud.android.datamodel.OCFile;
@@ -73,7 +73,7 @@ import com.owncloud.android.lib.common.utils.Log_OC;
 import com.owncloud.android.lib.resources.e2ee.ToggleEncryptionRemoteOperation;
 import com.owncloud.android.lib.resources.files.SearchRemoteOperation;
 import com.owncloud.android.lib.resources.files.ToggleFavoriteRemoteOperation;
-import com.owncloud.android.lib.resources.shares.GetRemoteSharesOperation;
+import com.owncloud.android.lib.resources.shares.GetSharesRemoteOperation;
 import com.owncloud.android.lib.resources.status.OCCapability;
 import com.owncloud.android.ui.activity.FileActivity;
 import com.owncloud.android.ui.activity.FileDisplayActivity;
@@ -235,6 +235,8 @@ public class OCFileListFragment extends ExtendedListFragment implements
     private AsyncTask remoteOperationAsyncTask;
     private String mLimitToMimeType;
 
+    @Inject DeviceInfo deviceInfo;
+
     private enum MenuItemAddRemove {
         DO_NOTHING, REMOVE_SORT, REMOVE_GRID_AND_SORT, ADD_SORT, ADD_GRID_AND_SORT, ADD_GRID_AND_SORT_WITH_SEARCH,
         REMOVE_SEARCH
@@ -309,7 +311,6 @@ public class OCFileListFragment extends ExtendedListFragment implements
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         Log_OC.i(TAG, "onCreateView() start");
         View v = super.onCreateView(inflater, container, savedInstanceState);
-        bottomNavigationView = v.findViewById(R.id.bottom_navigation_view);
 
         if (savedInstanceState != null
                 && Parcels.unwrap(savedInstanceState.getParcelable(KEY_CURRENT_SEARCH_TYPE)) != null &&
@@ -319,32 +320,6 @@ public class OCFileListFragment extends ExtendedListFragment implements
             searchEvent = Parcels.unwrap(savedInstanceState.getParcelable(OCFileListFragment.SEARCH_EVENT));
         } else {
             currentSearchType = SearchType.NO_SEARCH;
-        }
-
-        if (getResources().getBoolean(R.bool.bottom_toolbar_enabled)) {
-            bottomNavigationView.setVisibility(View.VISIBLE);
-            DisplayUtils.setupBottomBar(
-                accountManager.getCurrentAccount(),
-                bottomNavigationView, getResources(),
-                getActivity(),
-                R.id.nav_bar_files
-            );
-        }
-
-        if (!getResources().getBoolean(R.bool.bottom_toolbar_enabled) || savedInstanceState != null) {
-
-            final View fabView = v.findViewById(R.id.fab_main);
-            final RelativeLayout.LayoutParams layoutParams = (RelativeLayout.LayoutParams)
-                    fabView.getLayoutParams();
-            layoutParams.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM, 1);
-            Handler handler = new Handler();
-            handler.post(new Runnable() {
-                @Override
-                public void run() {
-                    fabView.setLayoutParams(layoutParams);
-                    fabView.invalidate();
-                }
-            });
         }
 
         Bundle args = getArguments();
@@ -398,6 +373,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
             getActivity(),
             accountManager.getCurrentAccount(),
             preferences,
+            accountManager,
             mContainerActivity,
             this,
             hideItemOptions,
@@ -455,7 +431,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
     private void registerFabListener() {
         FileActivity activity = (FileActivity) getActivity();
         getFabMain().setOnClickListener(v -> {
-            new OCFileListBottomSheetDialog(activity, this).show();
+            new OCFileListBottomSheetDialog(activity, this, deviceInfo).show();
         });
     }
 
@@ -523,9 +499,15 @@ public class OCFileListFragment extends ExtendedListFragment implements
     public void onOverflowIconClicked(OCFile file, View view) {
         PopupMenu popup = new PopupMenu(getActivity(), view);
         popup.inflate(R.menu.file_actions_menu);
-        FileMenuFilter mf = new FileMenuFilter(mAdapter.getFiles().size(), Collections.singleton(file),
-                ((FileActivity) getActivity()).getAccount(), mContainerActivity, getActivity(), true);
-        mf.filter(popup.getMenu(), true);
+        Account currentAccount = ((FileActivity) getActivity()).getAccount();
+        FileMenuFilter mf = new FileMenuFilter(mAdapter.getFiles().size(),
+                                               Collections.singleton(file),
+                                               currentAccount,
+                                               mContainerActivity, getActivity(),
+                                               true);
+        mf.filter(popup.getMenu(),
+                  true,
+                  accountManager.isMediaStreamingSupported(currentAccount));
         popup.setOnMenuItemClickListener(item -> {
             Set<OCFile> checkedFiles = new HashSet<>();
             checkedFiles.add(file);
@@ -659,15 +641,19 @@ public class OCFileListFragment extends ExtendedListFragment implements
             final int checkedCount = mAdapter.getCheckedItems().size();
             String title = getResources().getQuantityString(R.plurals.items_selected_count, checkedCount, checkedCount);
             mode.setTitle(title);
+            Account currentAccount = ((FileActivity) getActivity()).getAccount();
             FileMenuFilter mf = new FileMenuFilter(
                     mAdapter.getFiles().size(),
                     checkedFiles,
-                    ((FileActivity) getActivity()).getAccount(),
+                    currentAccount,
                     mContainerActivity,
                     getActivity(),
                     false
             );
-            mf.filter(menu, false);
+
+            mf.filter(menu,
+                      false,
+                      accountManager.isMediaStreamingSupported(currentAccount));
             return true;
         }
 
@@ -940,7 +926,6 @@ public class OCFileListFragment extends ExtendedListFragment implements
                     } else {
                         // update state and view of this fragment
                         searchFragment = false;
-                        mHideFab = false;
                         listDirectory(file, MainApp.isOnlyOnDevice(), false);
                         // then, notify parent activity to let it update its state and view
                         mContainerActivity.onBrowsedDownTo(file);
@@ -988,7 +973,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
                         Account account = accountManager.getCurrentAccount();
                         OCCapability capability = mContainerActivity.getStorageManager().getCapability(account.name);
 
-                        if (PreviewMediaFragment.canBePreviewed(file) && AccountUtils.getServerVersion(account)
+                        if (PreviewMediaFragment.canBePreviewed(file) && accountManager.getServerVersion(account)
                                 .isMediaStreamingSupported()) {
                             // stream media preview on >= NC14
                             ((FileDisplayActivity) mContainerActivity).startMediaPreview(file, 0, true, true, true);
@@ -1413,6 +1398,8 @@ public class OCFileListFragment extends ExtendedListFragment implements
                     onlyOnDevice,
                     mLimitToMimeType
                 );
+
+                OCFile previousDirectory = mFile;
                 mFile = directory;
 
                 updateLayout();
@@ -1420,7 +1407,9 @@ public class OCFileListFragment extends ExtendedListFragment implements
                 mAdapter.setHighlightedItem(file);
                 int position = mAdapter.getItemPosition(file);
                 if (position == -1) {
-                    getRecyclerView().scrollToPosition(0);
+                    if (previousDirectory == null || !previousDirectory.equals(directory)) {
+                        getRecyclerView().scrollToPosition(0);
+                    }
                 } else {
                     getRecyclerView().scrollToPosition(position);
                 }
@@ -1544,16 +1533,9 @@ public class OCFileListFragment extends ExtendedListFragment implements
     }
 
     private void unsetAllMenuItems(final boolean unsetDrawer) {
-        new Handler(Looper.getMainLooper()).post(new Runnable() {
-            @Override
-            public void run() {
-                if (unsetDrawer) {
-                    EventBus.getDefault().post(new DummyDrawerEvent());
-                } else {
-                    if (bottomNavigationView != null) {
-                        bottomNavigationView.getMenu().findItem(R.id.nav_bar_files).setChecked(true);
-                    }
-                }
+        new Handler(Looper.getMainLooper()).post(() -> {
+            if (unsetDrawer) {
+                EventBus.getDefault().post(new DummyDrawerEvent());
             }
         });
 
@@ -1669,7 +1651,6 @@ public class OCFileListFragment extends ExtendedListFragment implements
         Account currentAccount = accountManager.getCurrentAccount();
 
         OwnCloudAccount ocAccount;
-        AccountManager mAccountMgr = AccountManager.get(getActivity());
 
         try {
             ocAccount = new OwnCloudAccount(currentAccount, MainApp.getAppContext());
@@ -1706,30 +1687,11 @@ public class OCFileListFragment extends ExtendedListFragment implements
             unsetAllMenuItems(true);
         }
 
-
-        if (bottomNavigationView != null && isSearchEventSet(searchEvent)) {
-            switch (currentSearchType) {
-                case FAVORITE_SEARCH:
-                    DisplayUtils.setBottomBarItem(bottomNavigationView, R.id.nav_bar_favorites);
-                    break;
-                case PHOTO_SEARCH:
-                    DisplayUtils.setBottomBarItem(bottomNavigationView, R.id.nav_bar_photos);
-                    break;
-
-                default:
-                    DisplayUtils.setBottomBarItem(bottomNavigationView, -1);
-                    break;
-            }
-        }
-
-        Runnable switchViewsRunnable = new Runnable() {
-            @Override
-            public void run() {
-                if (isGridViewPreferred(mFile) && !isGridEnabled()) {
-                    switchToGridView();
-                } else if (!isGridViewPreferred(mFile) && isGridEnabled()) {
-                    switchToListView();
-                }
+        Runnable switchViewsRunnable = () -> {
+            if (isGridViewPreferred(mFile) && !isGridEnabled()) {
+                switchToGridView();
+            } else if (!isGridViewPreferred(mFile) && isGridEnabled()) {
+                switchToListView();
             }
         };
 
@@ -1751,7 +1713,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
             remoteOperation = new SearchRemoteOperation(event.getSearchQuery(), event.getSearchType(),
                                                         searchOnlyFolders);
         } else {
-            remoteOperation = new GetRemoteSharesOperation();
+            remoteOperation = new GetSharesRemoteOperation();
         }
 
         remoteOperationAsyncTask = new AsyncTask() {
@@ -1930,7 +1892,9 @@ public class OCFileListFragment extends ExtendedListFragment implements
     }
 
     private boolean isSearchEventSet(SearchEvent event) {
-        return event != null && !TextUtils.isEmpty(event.getSearchQuery()) && event.getSearchType() != null
+        return event != null && event.getSearchType() != null &&
+            (!TextUtils.isEmpty(event.getSearchQuery()) ||
+                event.searchType == SearchRemoteOperation.SearchType.SHARED_SEARCH)
             && event.getUnsetType() != null;
     }
 

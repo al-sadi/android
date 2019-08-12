@@ -3,6 +3,7 @@
     <string name="about_android">%1$s Aplicação Android</string>
     <string name="about_title">Sobre</string>
     <string name="about_version">versão %1$s</string>
+    <string name="about_version_with_build">Versão %1$s, montagem #%2$s</string>
     <string name="account_creation_failed">Criação de conta falhou</string>
     <string name="account_icon">Ícone de conta</string>
     <string name="account_not_found">Conta não encontrada!</string>
@@ -18,7 +19,7 @@
     <string name="actionbar_logger">Registos de Alterações</string>
     <string name="actionbar_mkdir">Nova pasta</string>
     <string name="actionbar_move">Mover</string>
-    <string name="actionbar_open_as_richdocument">Abrir com Collabora</string>
+    <string name="actionbar_open_as_richdocument_parameter">Abrir com %1$s</string>
     <string name="actionbar_open_with">Abrir com</string>
     <string name="actionbar_search">Procura</string>
     <string name="actionbar_see_details">Detalhes</string>
@@ -33,6 +34,7 @@
     <string name="activity_chooser_title">Enviar ligação para…</string>
     <string name="activity_icon">Actividade</string>
     <string name="add_to_cloud">Adicionar a %1$s</string>
+    <string name="associated_account_not_found">Conta associada não encontrada!</string>
     <string name="auth_access_failed">O acesso falhou: %1$s</string>
     <string name="auth_account_does_not_exist">A conta ainda não foi adicionada a este dispositivo</string>
     <string name="auth_account_not_new">Já existe uma conta para o mesmo utilizador e servidor no dispositivo</string>
@@ -40,13 +42,9 @@
     <string name="auth_bad_oc_version_title">Versão do servidor não reconhecida</string>
     <string name="auth_can_not_auth_against_server">Não é possível autenticar para este servidor</string>
     <string name="auth_check_server">Verificar servidor</string>
-    <string name="auth_connecting_auth_server">A ligar ao servidor de autenticação…</string>
     <string name="auth_connection_established">Ligação estabelecida</string>
     <string name="auth_expired_basic_auth_toast">Por favor, introduza a sua palavra-passe atual</string>
-    <string name="auth_expired_oauth_token_toast">A sua autorização expirou. Por favor, autorize novamente</string>
-    <string name="auth_expired_saml_sso_token_toast">A sua sessão expirou. Por favor, inicie a sessão novamente</string>
     <string name="auth_fail_get_user_name">O seu servidor não está a retornar um ID de usuário correto. Por favor, contacte o administrador. </string>
-    <string name="auth_getting_authorization">A obter autorização…</string>
     <string name="auth_host_address">Endereço do servidor</string>
     <string name="auth_host_url">Endereço do servidor https://…</string>
     <string name="auth_illegal_login_used">URL usado com dados login inválidos</string>
@@ -81,6 +79,7 @@
     <string name="auto_upload_path">/AutoUpload</string>
     <string name="autoupload_create_new_custom_folder">Criar nova estrutura de pasta personalizada</string>
     <string name="autoupload_custom_folder">Definir uma pasta personalizada</string>
+    <string name="autoupload_disable_power_save_check">Desabilitar a verificação de poupança de energia</string>
     <string name="avatar">Avatar</string>
     <string name="battery_optimization_close">Fechar</string>
     <string name="battery_optimization_disable">Desativar</string>
@@ -144,9 +143,12 @@
     <string name="copy_file_invalid_into_descendent">Não é possível copiar a pasta para uma das suas próprias pastas internas</string>
     <string name="copy_file_invalid_overwrite">O ficheiro já existe na pasta de destino</string>
     <string name="copy_file_not_found">Não é possível copiar. Por favor, verifique se o ficheiro existe</string>
+    <string name="copy_internal_link">Copiar ligação interna</string>
+    <string name="copy_internal_link_subline">Apenas funciona para utilizadores com acesso a esta pasta</string>
     <string name="copy_link">Copiar hiperligação</string>
     <string name="copy_move_to_encrypted_folder_not_supported">Copiar/mover para pasta encriptada não é actualmente suportado.</string>
     <string name="copy_to">Copiar para…</string>
+    <string name="could_not_retrieve_url">Não foi possível obter o URL</string>
     <string name="create_dir_fail_msg">Não foi possível criar a pasta</string>
     <string name="create_file_from_template">A criar ficheiro a partir de modelo...</string>
     <string name="create_new_document">Criar novo documento</string>
@@ -224,9 +226,11 @@
     <string name="error__upload__local_file_not_copied">Não foi possível copiar %1$s para a pasta local %2$s</string>
     <string name="error_cant_bind_to_operations_service">Erro crítico: impossível concluir a operação</string>
     <string name="error_comment_file">Erro ao comentar ficheiro</string>
+    <string name="error_retrieving_file">Erro ao obter o ficheiro</string>
     <string name="error_retrieving_templates">Erro ao obter modelos</string>
     <string name="error_starting_direct_camera_upload">Erro ao iniciar câmara</string>
     <string name="fab_label">Adicionar ou enviar</string>
+    <string name="failed_to_download">Falhou a passagem do ficheiro ao gestor de transferências</string>
     <string name="fallback_weblogin_back">Anterior</string>
     <string name="fallback_weblogin_text">Reverter para método de início de sessão anterior</string>
     <string name="favorite">Adicionar aos favoritos</string>
@@ -277,7 +281,7 @@
     <string name="file_migration_preparing">Preparando migração…</string>
     <string name="file_migration_restoring_accounts_configuration">Restaurando configurações da conta…</string>
     <string name="file_migration_saving_accounts_configuration">Guardando configurações da conta…</string>
-    <string name="file_migration_source_not_readable">Quer alterar o caminho da storage para %1$s ?\n\nNota: Todos os dados terão de ser descarregados novamente.</string>
+    <string name="file_migration_source_not_readable">Ainda pretende alterar o caminho de armazenamento para %1$s?\n\nNota: todos os dados serão novamente transferidos.</string>
     <string name="file_migration_source_not_readable_title">Impossível ler a pasta de origem</string>
     <string name="file_migration_updating_index">Actualizando indíce…</string>
     <string name="file_migration_use_data_folder">Use</string>
@@ -340,7 +344,7 @@
     <string name="login">Iniciar Sessão</string>
     <string name="maintenance_mode">Servidor em manutenção</string>
     <string name="manage_space_clear_data">Limpar dados</string>
-    <string name="manage_space_description">As configurações, base de dados e certificados de servidor referentes aos dados de %1$s serão permanentemente eliminados. \n\nOs ficheiros transferidos serão mantidos.\n\nEste processo pode ser demorado.</string>
+    <string name="manage_space_description">As definiçóes, base de dados e certificados de servidor referentes aos dados de %1$s serão eliminados paras sempre. \n\nOs ficheiros transferidos serão mantidos inalterados.\n\nEste processo pode demorar algum tempo.</string>
     <string name="manage_space_title">Gerir espaço</string>
     <string name="media_err_invalid_progressive_playback">O ficheiro de multimédia não pode ser transmitido</string>
     <string name="media_err_io">Não foi possível ler o ficheiro de multimédia</string>
@@ -402,10 +406,6 @@
     <string name="notifications_loading_activity">A carregar notificações…</string>
     <string name="notifications_no_results_headline">Sem notificações</string>
     <string name="notifications_no_results_message">Por favor, confirme novamente mais tarde.</string>
-    <string name="oauth_2_0_access_end_point_address_hint">Aceder a endereço de end point</string>
-    <string name="oauth_2_0_auth_end_point_address_hint">Endereço end point de autenticação</string>
-    <string name="oauth_check_onoff">Fazer login com OAuth 2.0</string>
-    <string name="oauth_login_connection">A ligar ao servidor OAuth 2.0…</string>
     <string name="offline_mode">Sem conexão à Internet</string>
     <string name="operation_canceled">A operação foi cancelada</string>
     <string name="outdated_server">O servidor chegou ao fim de vida, por favor, actualize-o!</string>
@@ -419,7 +419,7 @@
     <string name="participate_contribute_irc_text">Junte-se à conversação em IRC:</string>
     <string name="participate_contribute_translate_text">a aplicação</string>
     <string name="participate_contribute_translate_translate">Traduzir</string>
-    <string name="participate_dev_direct_download">Transfira a versão de desenvolvimento directamente</string>
+    <string name="participate_dev_direct_download">Transfira diretamente a versão de desenvolvimento</string>
     <string name="participate_dev_fdroid">Obter versão de desenvolvimento a partir da aplicação F-Droid</string>
     <string name="participate_rc_fdroid">Obter versão candidata a lançamento a partir da aplicação F-Droid</string>
     <string name="participate_rc_play_store">Obter versão candidata a lançamento a partir da loja Google Play</string>
@@ -447,6 +447,8 @@
     <string name="placeholder_media_time">12:23:45</string>
     <string name="placeholder_sentence">Isto é uma variável</string>
     <string name="placeholder_timestamp">2012/05/18 12:23</string>
+    <string name="power_check_dialog_title">Desabilitar a verificação de poupança de energia</string>
+    <string name="power_save_check_dialog_message">Desabilitar a verificação de poupança de energia pode resultar no envio de ficheiros quando a carga da bateria está baixa!</string>
     <string name="pref_behaviour_entries_delete_file">eliminado</string>
     <string name="pref_behaviour_entries_keep_file">mantido na pasta original</string>
     <string name="pref_behaviour_entries_move">movido para pasta da aplicação</string>
@@ -475,9 +477,11 @@
     <string name="prefs_instant_upload_path_use_subfolders_summary">Guardar em sub-pastas de acordo com o ano e o mês</string>
     <string name="prefs_instant_upload_path_use_subfolders_title">Usar Subpastas</string>
     <string name="prefs_license">Licença</string>
+    <string name="prefs_lock">Código da aplicação</string>
     <string name="prefs_lock_device_credentials_enabled">Credenciais de dispositivo ativadas</string>
     <string name="prefs_lock_device_credentials_not_setup">Não foram configuradas credenciais de dispositivo.</string>
     <string name="prefs_lock_none">nenhum</string>
+    <string name="prefs_lock_title">Proteger a aplicação, usando</string>
     <string name="prefs_lock_using_device_credentials">Credenciais de dispositivo</string>
     <string name="prefs_lock_using_passcode">Código</string>
     <string name="prefs_log_delete_history_button">Eliminar histórico</string>
@@ -506,11 +510,13 @@
     <string name="rename_dialog_title">Introduza um novo nome</string>
     <string name="rename_local_fail_msg">Não foi possível renomear a cópia local, tente um nome diferente</string>
     <string name="rename_server_fail_msg">Renomeação impossível, nome já utilizado</string>
+    <string name="reshare_not_allowed">Voltar a partilhar não é permitido</string>
     <string name="resharing_is_not_allowed">Não é permitido voltar a partilhar</string>
     <string name="resized_image_not_possible">Nenhuma imagem redimensionada disponível.</string>
     <string name="resized_image_not_possible_download">Nenhuma imagem redimensionada disponível. Deseja transferir a imagem completa?</string>
     <string name="restore">Restaurar ficheiro</string>
     <string name="restore_button_description">Restaurar ficheiro apagado</string>
+    <string name="retrieving_file">A obter o ficheiro…</string>
     <string name="richdocuments_failed_to_load_document">Falha ao carregar o documento!</string>
     <string name="saml_authentication_required_text">Necessário palavra-passe</string>
     <string name="saml_authentication_wrong_pass">Palavra-passe errada</string>
@@ -543,6 +549,7 @@
     <string name="share_link_file_error">Ocorreu um erro enquanto tentava partilhar este ficheiro ou pasta</string>
     <string name="share_link_file_no_exist">Não é possível partilhar. Por favor verifique se o ficheiro existe</string>
     <string name="share_link_forbidden_permissions">para partilhar este ficheiro</string>
+    <string name="share_link_optional_password_title">Insira uma palavra-passe opcional</string>
     <string name="share_link_password_title">Introduza uma palavra-passe</string>
     <string name="share_no_expiration_date_label">Definir a data de expiração</string>
     <string name="share_no_password_title">Defina a senha</string>
@@ -560,7 +567,7 @@
     <string name="share_send_note">Nota para o destinatário</string>
     <string name="share_via_link_edit_permission_label">Permitir edição</string>
     <string name="share_via_link_expiration_date_label">Definir a data de expiração</string>
-    <string name="share_via_link_hide_download">Esconder transferência</string>
+    <string name="share_via_link_hide_download">Ocultar transferência</string>
     <string name="share_via_link_hide_file_listing_permission_label">Esconder listagem de ficheiros</string>
     <string name="share_via_link_menu_password_label">Protegido com Senha (%1$s)</string>
     <string name="share_via_link_password_label">Proteger com palavra-passe</string>
@@ -620,6 +627,10 @@
     <string name="storage_movies">Filmes</string>
     <string name="storage_music">Música</string>
     <string name="storage_pictures">Imagens</string>
+    <string name="store_full_desc">A plataforma de produtividade auto-alojada que o/a mantém no controlo.\n\Características:\n* Interface simples e moderna, adequada ao tema do seu servidor\n* Envie ficheiros para o seu servidor Nextcloud\n* Partilhe-os com outros\n* Mantenha os seus ficheiros e pastas favoritos sincronizados\n* Pesquise em todas as pastas no seu servidor\n* Envie automaticamente fotografias e vídeos gravados pelo seu dispositivo\n* Mantenha-se informado/a com as notificações\n* Suporte para contas múltiplas\n* Proteja o acesso aos seus dados com impressão digital ou PIN\n* Integração com DAVx5 (anterior designado por DAVdroid) para uma configuração simples da sincronização do calendário &amp;contactos\n\nPor favor reporte todas as questões em https://github.com/nextcloud/android/issues e debata esta aplicação em https://help.nextcloud.com/c/clients/android\n\nNovo no Nextcloud? Nextcloud é um servidor privado de sincronização, partilha e comunicação. É software livre e pode alojá-lo você mesmo/a ou pagar uma companhia para o fazer por si. Desta forma você controla as suas fotografias, os seus dados de calendários e contactos, os seus documentos e tudo o resto.\n\nConheça o Nextcloud em https://nextcloud.com</string>
+    <string name="store_full_dev_desc">A plataforma de produtividade auto-alojada que o/a mantém no controlo.\nEsta é a versão de desenvolvimento oficial, com uma amostra diária de funcionalidades não testadas que podem causar instabilidade e perda de dados. A aplicação é para pessoas dispostas a testar e reportar erros, caso ocorram. Não a use para o seu trabalho de produção!\n\nTanto a versão de desenvolvimento como a normal estão disponíveis no F-droid e podem ser instaladas ao mesmo tempo.</string>
+    <string name="store_short_desc">A plataforma de produtividade auto-alojada que o/a mantém no controlo</string>
+    <string name="store_short_dev_desc">A plataforma de produtividade auto alojada que o mantém em controle (versão \"preview dev\")</string>
     <string name="stream">Transmita com…</string>
     <string name="stream_not_possible_headline">Transmissão interna não é possível</string>
     <string name="stream_not_possible_message">Por favor, como opção, transfira media ou utilize uma aplicação externa.</string>
@@ -755,8 +766,6 @@ Aproveite o novo e melhorado envio automático.</string>
     <string name="wait_checking_credentials">A verificar as credenciais guardadas</string>
     <string name="wait_for_tmp_copy_from_private_storage">A copiar o ficheiro do armazenamento privado</string>
     <string name="what_s_new_image">Imagem de novidades</string>
-    <string name="whats_new_device_credentials_content">Use um padrão, palavra-passe, pin ou a sua impressão digital para manter os seus dados seguros.</string>
-    <string name="whats_new_device_credentials_title">Utilize a protecção de dispositivo interna do Android</string>
     <string name="whats_new_skip">Passar à frente</string>
     <string name="whats_new_title">Novo em %1$s</string>
     <plurals name="sync_fail_in_favourites_content">

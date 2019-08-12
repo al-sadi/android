@@ -30,8 +30,10 @@ import android.graphics.Color;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
-import android.text.Html;
+import android.text.Spannable;
+import android.text.SpannableString;
 import android.text.Spanned;
+import android.text.style.ForegroundColorSpan;
 import android.view.View;
 import android.view.Window;
 import android.widget.EditText;
@@ -44,9 +46,9 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.textfield.TextInputLayout;
+import com.nextcloud.client.account.UserAccountManagerImpl;
 import com.owncloud.android.MainApp;
 import com.owncloud.android.R;
-import com.owncloud.android.authentication.AccountUtils;
 import com.owncloud.android.datamodel.FileDataStorageManager;
 import com.owncloud.android.lib.common.utils.Log_OC;
 import com.owncloud.android.lib.resources.status.OCCapability;
@@ -219,15 +221,24 @@ public final class ThemeUtils {
             if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.KITKAT) {
                 actionBar.setTitle(title);
             } else {
-                String colorHex = colorToHexString(fontColor(context));
-                actionBar.setTitle(Html.fromHtml("<font color='" + colorHex + "'>" + title + "</font>"));
+                Spannable text = new SpannableString(title);
+                text.setSpan(new ForegroundColorSpan(fontColor(context)),
+                             0,
+                             text.length(),
+                             Spannable.SPAN_INCLUSIVE_INCLUSIVE);
+                actionBar.setTitle(text);
             }
         }
     }
 
     public static Spanned getColoredTitle(String title, int color) {
-        String colorHex = colorToHexString(color);
-        return Html.fromHtml("<font color='" + colorHex + "'>" + title + "</font>");
+        Spannable text = new SpannableString(title);
+        text.setSpan(new ForegroundColorSpan(color),
+                     0,
+                     text.length(),
+                     Spannable.SPAN_INCLUSIVE_INCLUSIVE);
+
+        return text;
     }
 
     /**
@@ -241,9 +252,13 @@ public final class ThemeUtils {
             if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.KITKAT) {
                 actionBar.setTitle(titleId);
             } else {
-                String colorHex = colorToHexString(fontColor(context));
                 String title = context.getString(titleId);
-                actionBar.setTitle(Html.fromHtml("<font color='" + colorHex + "'>" + title + "</font>"));
+                Spannable text = new SpannableString(title);
+                text.setSpan(new ForegroundColorSpan(fontColor(context)),
+                             0,
+                             text.length(),
+                             Spannable.SPAN_INCLUSIVE_INCLUSIVE);
+                actionBar.setTitle(text);
             }
         }
     }
@@ -459,7 +474,7 @@ public final class ThemeUtils {
         }
 
         editText.setHighlightColor(context.getResources().getColor(R.color.fg_contrast));
-        setTextViewCursorColor(editText, color);
+        setEditTextCursorColor(editText, color);
         setTextViewHandlesColor(context, editText, color);
     }
 
@@ -544,7 +559,8 @@ public final class ThemeUtils {
         if (acc != null) {
             account = acc;
         } else if (context != null) {
-            account = AccountUtils.getCurrentOwnCloudAccount(context);
+            // TODO: refactor when dark theme work is completed
+            account = UserAccountManagerImpl.fromContext(context).getCurrentAccount();
         }
 
         if (account != null) {
@@ -559,34 +575,54 @@ public final class ThemeUtils {
      * Lifted from SO.
      * FindBugs surpressed because of lack of public API to alter the cursor color.
      *
-     * @param view      TextView to be styled
+     * @param editText  TextView to be styled
      * @param color     The desired cursor colour
-     * @see             <a href="https://stackoverflow.com/questions/25996032/how-to-change-programmatically-edittext-cursor-color-in-android#26543290">StackOverflow url</a>
+     * @see             <a href="https://stackoverflow.com/a/52564925">StackOverflow url</a>
      */
     @SuppressFBWarnings
-    private static void setTextViewCursorColor(EditText view, @ColorInt int color) {
+    public static void setEditTextCursorColor(EditText editText, int color) {
         try {
             // Get the cursor resource id
-            Field field = TextView.class.getDeclaredField("mCursorDrawableRes");
-            field.setAccessible(true);
-            int drawableResId = field.getInt(view);
+            if (Build.VERSION.SDK_INT >= 28) {//set differently in Android P (API 28)
+                Field field = TextView.class.getDeclaredField("mCursorDrawableRes");
+                field.setAccessible(true);
+                int drawableResId = field.getInt(editText);
 
-            // Get the editor
-            field = TextView.class.getDeclaredField("mEditor");
-            field.setAccessible(true);
-            Object editor = field.get(view);
+                // Get the editor
+                field = TextView.class.getDeclaredField("mEditor");
+                field.setAccessible(true);
+                Object editor = field.get(editText);
 
-            // Get the drawable and set a color filter
-            Drawable drawable = ContextCompat.getDrawable(view.getContext(), drawableResId);
-            drawable.setColorFilter(color, PorterDuff.Mode.SRC_IN);
-            Drawable[] drawables = {drawable, drawable};
+                // Get the drawable and set a color filter
+                Drawable drawable = ContextCompat.getDrawable(editText.getContext(), drawableResId);
+                drawable.setColorFilter(color, PorterDuff.Mode.SRC_IN);
 
-            // Set the drawables
-            field = editor.getClass().getDeclaredField("mCursorDrawable");
-            field.setAccessible(true);
-            field.set(editor, drawables);
-        } catch (Exception e) {
-            Log_OC.e(TAG, "setTextViewCursorColor", e);
+                // Set the drawables
+                field = editor.getClass().getDeclaredField("mDrawableForCursor");
+                field.setAccessible(true);
+                field.set(editor, drawable);
+            } else {
+                Field field = TextView.class.getDeclaredField("mCursorDrawableRes");
+                field.setAccessible(true);
+                int drawableResId = field.getInt(editText);
+
+                // Get the editor
+                field = TextView.class.getDeclaredField("mEditor");
+                field.setAccessible(true);
+                Object editor = field.get(editText);
+
+                // Get the drawable and set a color filter
+                Drawable drawable = ContextCompat.getDrawable(editText.getContext(), drawableResId);
+                drawable.setColorFilter(color, PorterDuff.Mode.SRC_IN);
+                Drawable[] drawables = {drawable, drawable};
+
+                // Set the drawables
+                field = editor.getClass().getDeclaredField("mCursorDrawable");
+                field.setAccessible(true);
+                field.set(editor, drawables);
+            }
+        } catch (Exception exception) {
+            // we do not log this
         }
     }
 

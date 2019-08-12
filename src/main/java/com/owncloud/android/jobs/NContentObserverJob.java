@@ -27,10 +27,11 @@ import android.os.Build;
 
 import com.evernote.android.job.JobRequest;
 import com.evernote.android.job.util.support.PersistableBundleCompat;
-import com.nextcloud.client.preferences.AppPreferencesImpl;
+import com.nextcloud.client.device.PowerManagementService;
+import com.nextcloud.client.preferences.AppPreferences;
+import com.owncloud.android.MainApp;
 import com.owncloud.android.datamodel.SyncedFolderProvider;
 import com.owncloud.android.utils.FilesSyncHelper;
-import com.owncloud.android.utils.PowerUtils;
 
 import androidx.annotation.RequiresApi;
 
@@ -40,6 +41,21 @@ import androidx.annotation.RequiresApi;
  */
 @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
 public class NContentObserverJob extends JobService {
+
+    private PowerManagementService powerManagementService;
+    private AppPreferences preferences;
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+
+        // Temporary workaround for https://github.com/nextcloud/android/issues/4147
+        // TODO: this must be fixed properly
+        MainApp app = (MainApp) getApplication();
+        powerManagementService = app.getPowerManagementService();
+        preferences = app.getPreferences();
+    }
+
     @Override
     public boolean onStartJob(JobParameters params) {
 
@@ -65,9 +81,8 @@ public class NContentObserverJob extends JobService {
     }
 
     private void checkAndStartFileSyncJob() {
-        if (!PowerUtils.isPowerSaveMode(getApplicationContext()) &&
-                new SyncedFolderProvider(getContentResolver(),
-                                         AppPreferencesImpl.fromContext(getApplicationContext())).countEnabledSyncedFolders() > 0) {
+        if (!powerManagementService.isPowerSavingEnabled() &&
+                new SyncedFolderProvider(getContentResolver(), preferences).countEnabledSyncedFolders() > 0) {
             PersistableBundleCompat persistableBundleCompat = new PersistableBundleCompat();
             persistableBundleCompat.putBoolean(FilesSyncJob.SKIP_CUSTOM, true);
 

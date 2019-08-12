@@ -26,7 +26,9 @@ package com.owncloud.android.ui.activity;
 
 import android.accounts.Account;
 import android.annotation.SuppressLint;
+import android.app.DownloadManager;
 import android.content.ActivityNotFoundException;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
@@ -47,7 +49,6 @@ import com.bumptech.glide.Glide;
 import com.google.android.material.snackbar.Snackbar;
 import com.nextcloud.client.account.CurrentAccountProvider;
 import com.owncloud.android.R;
-import com.owncloud.android.authentication.AccountUtils;
 import com.owncloud.android.datamodel.OCFile;
 import com.owncloud.android.datamodel.Template;
 import com.owncloud.android.datamodel.ThumbnailsCacheManager;
@@ -60,6 +61,8 @@ import com.owncloud.android.utils.DisplayUtils;
 import com.owncloud.android.utils.MimeTypeUtil;
 import com.owncloud.android.utils.glide.CustomGlideStreamLoader;
 
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.parceler.Parcels;
 
 import javax.inject.Inject;
@@ -298,7 +301,7 @@ public class RichDocumentsWebView extends ExternalSiteWebView {
         OCFile file = data.getParcelableExtra(FolderPickerActivity.EXTRA_FILES);
 
         new Thread(() -> {
-            Account account = AccountUtils.getCurrentOwnCloudAccount(this);
+            Account account = currentAccountProvider.getCurrentAccount();
             RichDocumentsCreateAssetOperation operation = new RichDocumentsCreateAssetOperation(file.getRemotePath());
             RemoteOperationResult result = operation.execute(account, this);
 
@@ -349,6 +352,14 @@ public class RichDocumentsWebView extends ExternalSiteWebView {
         }
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        webview.evaluateJavascript("if (typeof OCA.RichDocuments.documentsMain.postGrabFocus !== 'undefined') " +
+                                       "{ OCA.RichDocuments.documentsMain.postGrabFocus(); }", null);
+    }
+
     private class RichDocumentsMobileInterface {
         @JavascriptInterface
         public void close() {
@@ -368,6 +379,44 @@ public class RichDocumentsWebView extends ExternalSiteWebView {
         @JavascriptInterface
         public void documentLoaded() {
             runOnUiThread(RichDocumentsWebView.this::hideLoading);
+        }
+
+        @JavascriptInterface
+        public void downloadAs(String json) {
+            Uri downloadUrl;
+            try {
+                JSONObject downloadJson = new JSONObject(json);
+                downloadUrl = Uri.parse(downloadJson.getString("URL"));
+            } catch (JSONException e) {
+                Log_OC.e(this, "Failed to parse rename json message: " + e);
+                return;
+            }
+
+            DownloadManager downloadmanager = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+
+            if (downloadmanager == null) {
+                DisplayUtils.showSnackMessage(webview, getString(R.string.failed_to_download));
+                return;
+            }
+
+            DownloadManager.Request request = new DownloadManager.Request(downloadUrl);
+            request.allowScanningByMediaScanner();
+            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+
+            downloadmanager.enqueue(request);
+        }
+
+        @JavascriptInterface
+        public void fileRename(String renameString) {
+            // when shared file is renamed in another instance, we will get notified about it
+            // need to change filename for sharing
+            try {
+                JSONObject renameJson = new JSONObject(renameString);
+                String newName = renameJson.getString("NewName");
+                file.setFileName(newName);
+            } catch (JSONException e) {
+                Log_OC.e(this, "Failed to parse rename json message: " + e);
+            }
         }
     }
 

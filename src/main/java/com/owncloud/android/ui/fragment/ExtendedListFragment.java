@@ -50,17 +50,14 @@ import android.widget.GridView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
-import android.widget.RelativeLayout;
 import android.widget.TextView;
 
-import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.nextcloud.client.account.UserAccountManager;
 import com.nextcloud.client.di.Injectable;
 import com.nextcloud.client.preferences.AppPreferences;
 import com.owncloud.android.MainApp;
 import com.owncloud.android.R;
-import com.owncloud.android.authentication.AccountUtils;
 import com.owncloud.android.lib.common.utils.Log_OC;
 import com.owncloud.android.lib.resources.files.SearchRemoteOperation;
 import com.owncloud.android.ui.EmptyRecyclerView;
@@ -226,19 +223,6 @@ public class ExtendedListFragment extends Fragment implements
                             if (!(getActivity() instanceof UploadFilesActivity)) {
                                 setFabVisible(!hasFocus);
                             }
-
-                            boolean searchSupported = AccountUtils.hasSearchSupport(accountManager.getCurrentAccount());
-
-                            if (getResources().getBoolean(R.bool.bottom_toolbar_enabled) && searchSupported) {
-                                BottomNavigationView bottomNavigationView = getActivity().
-                                        findViewById(R.id.bottom_navigation_view);
-                                if (hasFocus) {
-                                    bottomNavigationView.setVisibility(View.GONE);
-                                } else {
-                                    bottomNavigationView.setVisibility(View.VISIBLE);
-                                }
-                            }
-
                         }
                     }
                 }, 100);
@@ -317,7 +301,7 @@ public class ExtendedListFragment extends Fragment implements
                 handler.postDelayed(new Runnable() {
                     @Override
                     public void run() {
-                        if (AccountUtils.hasSearchSupport(accountManager.getCurrentAccount())) {
+                        if (accountManager.isSearchSupported(accountManager.getCurrentAccount())) {
                             EventBus.getDefault().post(new SearchEvent(query,
                                 SearchRemoteOperation.SearchType.FILE_SEARCH, SearchEvent.UnsetType.NO_UNSET));
                         } else {
@@ -402,19 +386,6 @@ public class ExtendedListFragment extends Fragment implements
 
         mFabMain = v.findViewById(R.id.fab_main);
         ThemeUtils.tintFloatingActionButton(mFabMain, R.drawable.ic_plus, getContext());
-
-        boolean searchSupported = AccountUtils.hasSearchSupport(accountManager.getCurrentAccount());
-
-        if (getResources().getBoolean(R.bool.bottom_toolbar_enabled) && searchSupported) {
-            RelativeLayout.LayoutParams layoutParams = (RelativeLayout.LayoutParams) mFabMain.getLayoutParams();
-            final float scale = v.getResources().getDisplayMetrics().density;
-
-            BottomNavigationView bottomNavigationView = v.findViewById(R.id.bottom_navigation_view);
-
-            // convert the DP into pixel
-            int pixel = (int) (32 * scale + 0.5f);
-            layoutParams.setMargins(0, 0, pixel / 2, bottomNavigationView.getMeasuredHeight() + pixel * 2);
-        }
 
         return v;
     }

@@ -29,7 +29,6 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.owncloud.android.R;
 import com.owncloud.android.datamodel.FileDataStorageManager;
 import com.owncloud.android.datamodel.OCFile;
@@ -45,7 +44,6 @@ import com.owncloud.android.ui.adapter.ActivityListAdapter;
 import com.owncloud.android.ui.interfaces.ActivityListInterface;
 import com.owncloud.android.ui.preview.PreviewImageActivity;
 import com.owncloud.android.ui.preview.PreviewImageFragment;
-import com.owncloud.android.utils.DisplayUtils;
 import com.owncloud.android.utils.ThemeUtils;
 
 import java.util.List;
@@ -85,9 +83,6 @@ public class ActivitiesActivity extends FileActivity implements ActivityListInte
 
     @BindView(android.R.id.list)
     public RecyclerView recyclerView;
-
-    @BindView(R.id.bottom_navigation_view)
-    public BottomNavigationView bottomNavigationView;
 
     @BindString(R.string.activities_no_results_headline)
     public String noResultsHeadline;
@@ -139,7 +134,6 @@ public class ActivitiesActivity extends FileActivity implements ActivityListInte
         emptyContentProgressBar.setVisibility(View.GONE);
         emptyContentMessage.setVisibility(View.INVISIBLE);
         emptyContentHeadline.setVisibility(View.INVISIBLE);
-
     }
 
     protected void onCreateSwipeToRefresh(SwipeRefreshLayout refreshLayout) {
@@ -198,17 +192,6 @@ public class ActivitiesActivity extends FileActivity implements ActivityListInte
                 }
             }
         });
-
-        if (getResources().getBoolean(R.bool.bottom_toolbar_enabled)) {
-            bottomNavigationView.setVisibility(View.VISIBLE);
-            DisplayUtils.setupBottomBar(
-                getUserAccountManager().getCurrentAccount(),
-                bottomNavigationView,
-                getResources(),
-                this,
-                -1
-            );
-        }
 
         mActionListener.loadActivities(null);
     }

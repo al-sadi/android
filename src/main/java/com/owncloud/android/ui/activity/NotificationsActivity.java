@@ -38,10 +38,9 @@ import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
-import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.snackbar.Snackbar;
+import com.nextcloud.client.account.UserAccountManager;
 import com.owncloud.android.R;
-import com.owncloud.android.authentication.AccountUtils;
 import com.owncloud.android.datamodel.ArbitraryDataProvider;
 import com.owncloud.android.jobs.NotificationJob;
 import com.owncloud.android.lib.common.OwnCloudAccount;
@@ -127,7 +126,7 @@ public class NotificationsActivity extends FileActivity implements Notifications
             String account = getIntent().getExtras().getString(NotificationJob.KEY_NOTIFICATION_ACCOUNT);
 
             if (account != null && (currentAccount == null || !account.equalsIgnoreCase(currentAccount.name))) {
-                AccountUtils.setCurrentOwnCloudAccount(this, account);
+                accountManager.setCurrentOwnCloudAccount(account);
                 setAccount(getUserAccountManager().getCurrentAccount());
                 currentAccount = getAccount();
             }
@@ -178,8 +177,8 @@ public class NotificationsActivity extends FileActivity implements Notifications
             } else {
                 ArbitraryDataProvider arbitraryDataProvider = new ArbitraryDataProvider(getContentResolver());
 
-                    boolean usesOldLogin = arbitraryDataProvider.getBooleanValue(currentAccount.name,
-                            AccountUtils.ACCOUNT_USES_STANDARD_PASSWORD);
+                boolean usesOldLogin = arbitraryDataProvider.getBooleanValue(currentAccount.name,
+                                                                     UserAccountManager.ACCOUNT_USES_STANDARD_PASSWORD);
 
                 if (usesOldLogin) {
                     snackbar = Snackbar.make(emptyContentContainer, R.string.push_notifications_old_login,
@@ -242,18 +241,6 @@ public class NotificationsActivity extends FileActivity implements Notifications
 
         recyclerView.setLayoutManager(layoutManager);
 
-        BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_navigation_view);
-
-        if (getResources().getBoolean(R.bool.bottom_toolbar_enabled)) {
-            bottomNavigationView.setVisibility(View.VISIBLE);
-            DisplayUtils.setupBottomBar(
-                getUserAccountManager().getCurrentAccount(),
-                bottomNavigationView,
-                getResources(),
-                this,
-                -1);
-        }
-
         fetchAndSetData();
     }
 
@@ -267,7 +254,7 @@ public class NotificationsActivity extends FileActivity implements Notifications
                 try {
                     OwnCloudAccount ocAccount = new OwnCloudAccount(currentAccount, this);
                     client = OwnCloudClientManagerFactory.getDefaultSingleton().getClientFor(ocAccount, this);
-                    client.setOwnCloudVersion(AccountUtils.getServerVersion(currentAccount));
+                    client.setOwnCloudVersion(accountManager.getServerVersion(currentAccount));
                 } catch (com.owncloud.android.lib.common.accounts.AccountUtils.AccountNotFoundException |
                     IOException | OperationCanceledException | AuthenticatorException e) {
                     Log_OC.e(TAG, "Error initializing client", e);

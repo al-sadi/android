@@ -46,9 +46,9 @@ import android.widget.TextView;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.target.BitmapImageViewTarget;
+import com.nextcloud.client.account.UserAccountManager;
 import com.nextcloud.client.preferences.AppPreferences;
 import com.owncloud.android.R;
-import com.owncloud.android.authentication.AccountUtils;
 import com.owncloud.android.datamodel.FileDataStorageManager;
 import com.owncloud.android.datamodel.OCFile;
 import com.owncloud.android.datamodel.ThumbnailsCacheManager;
@@ -101,12 +101,11 @@ public class OCFileListAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
     implements DisplayUtils.AvatarGenerationListener {
 
     private static final int showFilenameColumnThreshold = 4;
-    private final FileDownloader.FileDownloaderBinder downloaderBinder;
-    private final FileUploader.FileUploaderBinder uploaderBinder;
-    private final OperationsService.OperationsServiceBinder operationsServiceBinder;
+    private final ComponentsGetter transferServiceGetter;
     private final String userId;
     private Context mContext;
     private AppPreferences preferences;
+    private UserAccountManager accountManager;
     private List<OCFile> mFiles = new ArrayList<>();
     private List<OCFile> mFilesAll = new ArrayList<>();
     private boolean mHideItemOptions;
@@ -135,6 +134,7 @@ public class OCFileListAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
         Context context,
         Account account,
         AppPreferences preferences,
+        UserAccountManager accountManager,
         ComponentsGetter transferServiceGetter,
         OCFileListFragmentInterface ocFileListFragmentInterface,
         boolean argHideItemOptions,
@@ -144,18 +144,17 @@ public class OCFileListAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
         this.ocFileListFragmentInterface = ocFileListFragmentInterface;
         mContext = context;
         this.preferences = preferences;
+        this.accountManager = accountManager;
         this.account = account;
         mHideItemOptions = argHideItemOptions;
         this.gridView = gridView;
         checkedFiles = new HashSet<>();
 
-        downloaderBinder = transferServiceGetter.getFileDownloaderBinder();
-        uploaderBinder = transferServiceGetter.getFileUploaderBinder();
-        operationsServiceBinder = transferServiceGetter.getOperationsServiceBinder();
+        this.transferServiceGetter = transferServiceGetter;
 
         if (account != null) {
-            AccountManager accountManager = AccountManager.get(mContext);
-            userId = accountManager.getUserData(account,
+            AccountManager platformAccountManager = AccountManager.get(mContext);
+            userId = platformAccountManager.getUserData(account,
                                                 com.owncloud.android.lib.common.accounts.AccountUtils.Constants.KEY_USER_ID);
         } else {
             userId = "";
@@ -362,7 +361,7 @@ public class OCFileListAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
                     ArrayList<String> sharees = (ArrayList<String>) file.getSharees();
 
                     // use fileOwner if not oneself, then add at first
-                    if (!fileOwner.equals(userId) && !sharees.contains(fileOwner)) {
+                    if (fileOwner != null && !fileOwner.equals(userId) && !sharees.contains(fileOwner)) {
                         sharees.add(fileOwner);
                     }
 
@@ -439,17 +438,20 @@ public class OCFileListAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
 
             gridViewHolder.localFileIndicator.setVisibility(View.INVISIBLE);   // default first
 
+            OperationsService.OperationsServiceBinder operationsServiceBinder = transferServiceGetter.getOperationsServiceBinder();
+            FileDownloader.FileDownloaderBinder fileDownloaderBinder = transferServiceGetter.getFileDownloaderBinder();
+            FileUploader.FileUploaderBinder fileUploaderBinder = transferServiceGetter.getFileUploaderBinder();
             if (operationsServiceBinder != null && operationsServiceBinder.isSynchronizing(account, file)) {
                 //synchronizing
                 gridViewHolder.localFileIndicator.setImageResource(R.drawable.ic_synchronizing);
                 gridViewHolder.localFileIndicator.setVisibility(View.VISIBLE);
 
-            } else if (downloaderBinder != null && downloaderBinder.isDownloading(account, file)) {
+            } else if (fileDownloaderBinder != null && fileDownloaderBinder.isDownloading(account, file)) {
                 // downloading
                 gridViewHolder.localFileIndicator.setImageResource(R.drawable.ic_synchronizing);
                 gridViewHolder.localFileIndicator.setVisibility(View.VISIBLE);
 
-            } else if (uploaderBinder != null && uploaderBinder.isUploading(account, file)) {
+            } else if (fileUploaderBinder != null && fileUploaderBinder.isUploading(account, file)) {
                 //uploading
                 gridViewHolder.localFileIndicator.setImageResource(R.drawable.ic_synchronizing);
                 gridViewHolder.localFileIndicator.setVisibility(View.VISIBLE);
@@ -662,7 +664,7 @@ public class OCFileListAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
                 sharedIconView.setImageResource(R.drawable.ic_unshared);
                 sharedIconView.setContentDescription(mContext.getString(R.string.shared_icon_share));
             }
-            if (AccountUtils.accountOwnsFile(file, account)) {
+            if (accountManager.accountOwnsFile(file, account)) {
                 sharedIconView.setOnClickListener(view -> ocFileListFragmentInterface.onShareIconClick(file));
             } else {
                 sharedIconView.setOnClickListener(view -> ocFileListFragmentInterface.showShareDetailView(file));

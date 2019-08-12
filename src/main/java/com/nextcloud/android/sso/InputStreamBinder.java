@@ -32,16 +32,18 @@ import android.os.Binder;
 import android.os.ParcelFileDescriptor;
 import android.text.TextUtils;
 import android.util.Log;
+
 import com.nextcloud.android.sso.aidl.IInputStreamService;
 import com.nextcloud.android.sso.aidl.NextcloudRequest;
 import com.nextcloud.android.sso.aidl.ParcelFileDescriptorUtil;
-import com.owncloud.android.authentication.AccountUtils;
+import com.nextcloud.client.account.UserAccountManager;
 import com.owncloud.android.lib.common.OwnCloudAccount;
 import com.owncloud.android.lib.common.OwnCloudClient;
 import com.owncloud.android.lib.common.OwnCloudClientManager;
 import com.owncloud.android.lib.common.OwnCloudClientManagerFactory;
 import com.owncloud.android.lib.common.utils.Log_OC;
 import com.owncloud.android.utils.EncryptionUtils;
+
 import org.apache.commons.httpclient.HttpConnection;
 import org.apache.commons.httpclient.HttpMethodBase;
 import org.apache.commons.httpclient.HttpState;
@@ -93,9 +95,11 @@ public class InputStreamBinder extends IInputStreamService.Stub {
 
     private static final char PATH_SEPARATOR = '/';
     private Context context;
+    private UserAccountManager accountManager;
 
-    public InputStreamBinder(Context context) {
+    public InputStreamBinder(Context context, UserAccountManager accountManager) {
         this.context = context;
+        this.accountManager = accountManager;
     }
 
     private NameValuePair[] convertMapToNVP(Map<String, String> map) {
@@ -112,8 +116,9 @@ public class InputStreamBinder extends IInputStreamService.Stub {
         return performNextcloudRequestAndBodyStream(input, null);
     }
 
-    public ParcelFileDescriptor performNextcloudRequestAndBodyStream(ParcelFileDescriptor input,
-                                                                     ParcelFileDescriptor requestBodyParcelFileDescriptor) {
+    public ParcelFileDescriptor performNextcloudRequestAndBodyStream(
+        ParcelFileDescriptor input,
+        ParcelFileDescriptor requestBodyParcelFileDescriptor) {
         // read the input
         final InputStream is = new ParcelFileDescriptor.AutoCloseInputStream(input);
 
@@ -192,11 +197,10 @@ public class InputStreamBinder extends IInputStreamService.Stub {
 
             case "POST":
                 method = new PostMethod(requestUrl);
-                if(requestBodyInputStream != null){
+                if (requestBodyInputStream != null) {
                     RequestEntity requestEntity = new InputStreamRequestEntity(requestBodyInputStream);
                     ((PostMethod) method).setRequestEntity(requestEntity);
-                }
-                else if (request.getRequestBody() != null) {
+                } else if (request.getRequestBody() != null) {
                     StringRequestEntity requestEntity = new StringRequestEntity(
                         request.getRequestBody(),
                         CONTENT_TYPE_APPLICATION_JSON,
@@ -207,11 +211,10 @@ public class InputStreamBinder extends IInputStreamService.Stub {
 
             case "PUT":
                 method = new PutMethod(requestUrl);
-                if(requestBodyInputStream != null){
+                if (requestBodyInputStream != null) {
                     RequestEntity requestEntity = new InputStreamRequestEntity(requestBodyInputStream);
                     ((PutMethod) method).setRequestEntity(requestEntity);
-                }
-                else if (request.getRequestBody() != null) {
+                } else if (request.getRequestBody() != null) {
                     StringRequestEntity requestEntity = new StringRequestEntity(
                         request.getRequestBody(),
                         CONTENT_TYPE_APPLICATION_JSON,
@@ -251,8 +254,8 @@ public class InputStreamBinder extends IInputStreamService.Stub {
         throws UnsupportedOperationException,
         com.owncloud.android.lib.common.accounts.AccountUtils.AccountNotFoundException,
         OperationCanceledException, AuthenticatorException, IOException {
-        Account account = AccountUtils.getOwnCloudAccountByName(context, request.getAccountName());
-        if(account == null) {
+        Account account = accountManager.getAccountByName(request.getAccountName());
+        if (account == null) {
             throw new IllegalStateException(EXCEPTION_ACCOUNT_NOT_FOUND);
         }
 
@@ -276,9 +279,15 @@ public class InputStreamBinder extends IInputStreamService.Stub {
         method.setQueryString(convertMapToNVP(request.getParameter()));
         method.addRequestHeader("OCS-APIREQUEST", "true");
 
-        for(Map.Entry<String, List<String>> header : request.getHeader().entrySet()) {
+        for (Map.Entry<String, List<String>> header : request.getHeader().entrySet()) {
             // https://stackoverflow.com/a/3097052
             method.addRequestHeader(header.getKey(), TextUtils.join(",", header.getValue()));
+
+            if ("OCS-APIREQUEST".equalsIgnoreCase(header.getKey())) {
+                throw new IllegalStateException(
+                    "The 'OCS-APIREQUEST' header will be automatically added by the Nextcloud SSO Library. " +
+                        "Please remove the header before making a request");
+            }
         }
 
         client.setFollowRedirects(request.isFollowRedirects());
@@ -301,7 +310,8 @@ public class InputStreamBinder extends IInputStreamService.Stub {
                 Log_OC.e(TAG, total.toString());
             }
             throw new IllegalStateException(EXCEPTION_HTTP_REQUEST_FAILED,
-                new IllegalStateException(String.valueOf(status), new Throwable(total.toString())));
+                                            new IllegalStateException(String.valueOf(status),
+                                                                      new IllegalStateException(total.toString())));
         }
     }
 
@@ -309,7 +319,7 @@ public class InputStreamBinder extends IInputStreamService.Stub {
         String callingPackageName = context.getPackageManager().getNameForUid(Binder.getCallingUid());
 
         SharedPreferences sharedPreferences = context.getSharedPreferences(SSO_SHARED_PREFERENCE,
-                Context.MODE_PRIVATE);
+                                                                           Context.MODE_PRIVATE);
         String hash = sharedPreferences.getString(callingPackageName + DELIMITER + request.getAccountName(), "");
         return validateToken(hash, request.getToken());
     }

@@ -41,13 +41,11 @@ import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.nextcloud.client.di.Injectable;
 import com.nextcloud.client.preferences.AppPreferences;
 import com.owncloud.android.BuildConfig;
 import com.owncloud.android.MainApp;
 import com.owncloud.android.R;
-import com.owncloud.android.authentication.AccountUtils;
 import com.owncloud.android.datamodel.ArbitraryDataProvider;
 import com.owncloud.android.datamodel.MediaFolder;
 import com.owncloud.android.datamodel.MediaFolderType;
@@ -132,7 +130,7 @@ public class SyncedFoldersActivity extends FileActivity implements SyncedFolderA
             currentAccount = getAccount();
 
             if (account != null && currentAccount != null && !account.equalsIgnoreCase(currentAccount.name)) {
-                AccountUtils.setCurrentOwnCloudAccount(getApplicationContext(), account);
+                accountManager.setCurrentOwnCloudAccount(account);
                 setAccount(getUserAccountManager().getCurrentAccount());
             }
 
@@ -200,19 +198,6 @@ public class SyncedFoldersActivity extends FileActivity implements SyncedFolderA
         mRecyclerView.addItemDecoration(new MediaGridItemDecoration(spacing));
         mRecyclerView.setLayoutManager(lm);
         mRecyclerView.setAdapter(mAdapter);
-
-        BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_navigation_view);
-
-        if (getResources().getBoolean(R.bool.bottom_toolbar_enabled)) {
-            bottomNavigationView.setVisibility(View.VISIBLE);
-            DisplayUtils.setupBottomBar(
-                getUserAccountManager().getCurrentAccount(),
-                bottomNavigationView,
-                getResources(),
-                this,
-                -1
-            );
-        }
 
         load(gridWidth * 2, false);
     }

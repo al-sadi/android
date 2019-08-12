@@ -2,6 +2,7 @@
 <resources>
     <string name="about_android">%1$s Android app</string>
     <string name="about_version">version %1$s</string>
+    <string name="about_version_with_build">version %1$s, build #%2$s</string>
     <string name="actionbar_sync">Refresh account</string>
     <string name="actionbar_open_with">Open with</string>
     <string name="actionbar_mkdir">New folder</string>
@@ -26,7 +27,6 @@
     <string name="drawer_item_recently_modified">Recently modified</string>
     <string name="drawer_item_shared">Shared</string>
     <string name="drawer_item_videos">Videos</string>
-    <string name="drawer_item_settings">Settings</string>
     <string name="drawer_item_uploads_list">Uploads</string>
     <string name="drawer_item_activities">Activities</string>
     <string name="drawer_item_notifications">Notifications</string>
@@ -136,6 +136,7 @@
     <string name="common_pending">Pending</string>
     <string name="common_delete">Delete</string>
     <string name="common_send">Send</string>
+    <string name="common_share">Share</string>
     <string name="about_title">About</string>
     <string name="delete_account">Remove account</string>
     <string name="delete_account_warning">Remove account %s and delete all local files?\n\nDeletion cannot be undone.</string>
@@ -710,12 +711,23 @@
 
     <string name="account_not_found">Account not found!</string>
 
-    <string name="screenshot_01_gridView">A safe home for all your data</string>
-    <string name="screenshot_02_listView">Browse and share your files easily</string>
-    <string name="screenshot_03_drawer">Quickly access activity, shares, offline files and more</string>
-    <string name="screenshot_04_accounts">Connect to different accounts</string>
-    <string name="screenshot_05_autoUpload">Automatically upload your photos &amp; videos</string>
-    <string name="screenshot_06_davdroid">Sync calendar &amp; contacts with DAVx5 (formerly known as DAVdroid)</string>
+    <string name="screenshot_01_gridView_heading">Protecting your data</string>
+    <string name="screenshot_01_gridView_subline">self-hosted productivity platform</string>
+
+    <string name="screenshot_02_listView_heading">Browse and share</string>
+    <string name="screenshot_02_listView_subline">all actions at your fingertips</string>
+
+    <string name="screenshot_03_drawer_heading">Activity, shares, offline files</string>
+    <string name="screenshot_03_drawer_subline">everything quickly accessible</string>
+
+    <string name="screenshot_04_accounts_heading">All your accounts</string>
+    <string name="screenshot_04_accounts_subline">in one place</string>
+
+    <string name="screenshot_05_autoUpload_heading">Automatic upload</string>
+    <string name="screenshot_05_autoUpload_subline">for your photos &amp; videos</string>
+
+    <string name="screenshot_06_davdroid_heading">Sync calendar &amp; contacts</string>
+    <string name="screenshot_06_davdroid_subline">with DAVx5 (formerly DAVdroid)</string>
 
     <string name="userinfo_no_info_headline">No personal info set</string>
     <string name="userinfo_no_info_text">Add name, picture and contact details on your profile page.</string>
@@ -794,7 +806,7 @@
     <string name="stream_not_possible_headline">Internal streaming not possible</string>
     <string name="stream_not_possible_message">Please download media instead or use external app.</string>
     <string name="folder_already_exists">Folder already exists</string>
-    <string name="actionbar_open_as_richdocument">Open with Collabora</string>
+    <string name="actionbar_open_as_richdocument_parameter">Open with %1$s</string>
     <string name="notification_icon">Notification icon</string>
     <string name="folder_confirm_create">Create</string>
     <string name="file_delete">Delete</string>
@@ -865,4 +877,19 @@
     <string name="shared_avatar_desc">Avatar from shared user</string>
     <string name="shared_with_you_by">Shared with you by %1$s</string>
     <string name="reshare_not_allowed">Resharing is not allowed</string>
+    <string name="retrieving_file">Retrieving file…</string>
+    <string name="associated_account_not_found">Associated account not found!</string>
+    <string name="error_retrieving_file">Error retrieving file</string>
+    <string name="could_not_retrieve_url">Could not retrieve url</string>
+    <string name="copy_internal_link">Copy internal link</string>
+    <string name="copy_internal_link_subline">Only works for users with access to this folder</string>
+    <string name="failed_to_download">Failed to pass file to download manager</string>
+
+    <string name="etm_title">Engineering Test Mode</string>
+    <string name="etm_preferences">Preferences</string>
+
+    <string name="error_report_issue_text">Report issue to tracker? (requires a Github account)</string>
+    <string name="error_report_issue_action">Report</string>
+    <string name="error_crash_title">%1$s crashed</string>
+    <string name="copied_to_clipboard">Copied to clipboard</string>
 </resources>
