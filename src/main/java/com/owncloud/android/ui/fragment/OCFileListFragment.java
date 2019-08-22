@@ -206,6 +206,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
     String JSONtime;
     String JSONcontent;
     String MasterFileName;
+    boolean MatrixExist=false;
     boolean authenticated = false;
 
 
@@ -1095,151 +1096,124 @@ public class OCFileListFragment extends ExtendedListFragment implements
 //                }
 //                else{
 
+                //1 - Determine did we have previously an UNTIDyMatrix,,,, or not
 
+                account = accountManager.getCurrentAccount();
+                accountName = account.name;
+                MatrixName = accountName.replace("@","/");
+                MasterFileName = MatrixName;
+                MasterFileName = MasterFileName.replace("/","_");
 
-                if(count == 0) { // if no UNITDYMatrix were downloaded before
+                File file = new File(getContext().getFilesDir(),MasterFileName);
+                if(file.exists()){
+                    MatrixExist=true;
+                    Log.i("By Mohd", "There is a matrix");
+                }
+                else{
+                    MatrixExist=false;
+                    Log.i("By Mohd", "Fresh install");
+                }
+
+                if(!MatrixExist) { // if no UNITDYMatrix were downloaded before
 
 
                     try {
-                        account = accountManager.getCurrentAccount();
-                        accountName = account.name;
-                        UNTIDyMatrix = new RegisterUNTIDy().execute("http://192.168.100.88/nextcloud/security/register.php?account="+accountName).get();
+                        Log.i("By Mohd", "Account name is: " + accountName);
+                        UNTIDyMatrix = new RegisterUNTIDy().execute("http://192.168.100.88/nextcloud/security/register.php?account=" + accountName + "&status=reset").get();
                         Log.i("By Mohammed", "Registeration Reply is: " + UNTIDyMatrix);
                         jo = new JSONObject(UNTIDyMatrix);
                         JSONaction = jo.getString("action");
-                        System.out.println("Evaluation"+JSONaction.contentEquals("download"));
+                        System.out.println("Evaluation" + JSONaction.contentEquals("download"));
 
-                        if(JSONaction.contentEquals("download")){
+                        if (JSONaction.contentEquals("download")) {
                             Log.i("By Mohammed", "Registeration initial download ");
                             JSONtime = jo.getString("time");
                             JSONcontent = jo.getString("content");
                             MatrixContent = JSONcontent;
-                            MatrixName = accountName.replace("@","/");
+                            MatrixName = accountName.replace("@", "/");
                             MasterFileName = MatrixName;
-                            MasterFileName = MasterFileName.replace("/","_");
-                            FileOutputStream FOS = getActivity().openFileOutput(MasterFileName,MODE_PRIVATE);
+                            MasterFileName = MasterFileName.replace("/", "_");
+                            Log.i("By Mohd", "MasterFileName name is: " + MasterFileName);
+                            FileOutputStream FOS = getActivity().openFileOutput(MasterFileName, MODE_PRIVATE);
                             MatrixName = MatrixName + "/" + JSONtime;
-                            MatrixName = MatrixName.replace("/","_");
+                            MatrixName = MatrixName.replace("/", "_");
+                            Log.i("By Mohd", "MatrixName name is: " + MatrixName);
                             FOS.write(MatrixName.getBytes());
                             FOS.close();
-                            FOS = getActivity().openFileOutput(MatrixName,MODE_PRIVATE);
+                            FOS = getActivity().openFileOutput(MatrixName, MODE_PRIVATE);
                             FOS.write(MatrixContent.getBytes());
                             FOS.close();
+                            new Start().execute("http://192.168.100.88/nextcloud/security/start.php").get();
                             mContainerActivity.getFileOperationsHelper().syncFiles(checkedFiles);
+                            new End().execute("http://192.168.100.88/nextcloud/security/end.php").get();
                             exitSelectionMode();
                             return true;
 
                         }
-                        if(JSONaction.contentEquals("authenticate")){
-
-
-                            MatrixName = accountName.replace("@","/");
-                            MatrixName = MatrixName.replace("/","_");
-                            MasterFileName = MatrixName;
-                            FileInputStream FIS = getActivity().openFileInput(MasterFileName);
-                            int c;
-                            String tmp = "";
-                            while((c = FIS.read())!=-1)
-                            {
-                                tmp = tmp + Character.toString((char)c);
-                            }
-                            MatrixName = tmp;
-                            FIS = getActivity().openFileInput(MatrixName);
-                            c=0;
-                            tmp = "";
-                            while((c = FIS.read())!=-1)
-                            {
-                                tmp = tmp + Character.toString((char)c);
-                            }
-                            MatrixContent = tmp;
-                            MatrixName = MatrixName.replace("_","/");
-                            Log.i("By Mohammed", "Authentication after registeration ");
-                            Log.i("By Mohammed", "Previosly saved matrix is: " + MatrixContent + " , and the file name is: " + MatrixName);
-                            String result = new Authenticate().execute(AUTHENTICATION_URL+MatrixName+"&matrix="+MatrixContent).get();
-                            Log.i("By Mohammed", result);
-                            jo = new JSONObject(result);
-                            JSONaction = jo.getString("action");
-                            if(JSONaction.contentEquals("download"))
-                            {
-                                Log.i("By Mohammed", "secondary download");
-                                JSONtime = jo.getString("time");
-                                JSONcontent = jo.getString("content");
-                                MatrixContent = JSONcontent;
-                                MatrixName = accountName.replace("@","/");
-                                MasterFileName = MatrixName;
-                                MasterFileName = MasterFileName.replace("/","_");
-                                FileOutputStream FOS = getActivity().openFileOutput(MasterFileName,MODE_PRIVATE);
-                                MatrixName = MatrixName + "/" + JSONtime;
-                                MatrixName = MatrixName.replace("/","_");
-                                FOS.write(MatrixName.getBytes());
-                                FOS.close();
-                                FOS = getActivity().openFileOutput(MatrixName,MODE_PRIVATE);
-                                FOS.write(MatrixContent.getBytes());
-                                FOS.close();
-
-                                mContainerActivity.getFileOperationsHelper().syncFiles(checkedFiles);
-                                exitSelectionMode();
-                                return true;
-                            }
-                            else
-                            {
-                                Log.i("By Mohammed", "Authentication failed");
-                                Toast.makeText(getActivity(), "Authentication failed, clear NextCloud account",
-                                               Toast.LENGTH_LONG).show();
-                                AccountManager am = (AccountManager) getActivity().getSystemService(getActivity().ACCOUNT_SERVICE);
-                                account = accountManager.getCurrentAccount();
-                                Log.i("By Mohammed", "the account name is: " + account.name);
-                                am.removeAccount(account, null, null);
-                                getActivity().finish();
-                                Intent start = new Intent(getActivity(), FileDisplayActivity.class);
-                                start.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                                startActivity(start);
-
-                                return true;
-                            }
-
-
-                        }
 
                     } catch (ExecutionException e) {
                         e.printStackTrace();
                     } catch (InterruptedException e) {
                         e.printStackTrace();
-                    }
-                    catch (JSONException e) {
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    } catch (Exception e) {
                         e.printStackTrace();
                     }
-                    catch (Exception e)
-                    {
-                        e.printStackTrace();
-                    }
-
-
-
-
 
                 }
+                else
+                {
 
-                else{ // if we already have an UNTIDyMatrix
-                    Log.i("By Mohammed", "Since we already have an UNTIDyMatrix, we will check it against what we have with the server");
+                    MatrixName = accountName.replace("@","/");
+                    MatrixName = MatrixName.replace("/","_");
+                    MasterFileName = MatrixName;
+                    try{
 
-                    AUTHENTICATION_URL += String.valueOf(UNTIDyMatrix); // get the matrix created previously
-
-                    new Authenticate().execute(AUTHENTICATION_URL);
-                    try {
-                        authenticationResult = new Authenticate().execute(AUTHENTICATION_URL).get();
-                        Log.i("By Mohammed","The authentication returned result is" + authenticationResult);
-                    } catch (ExecutionException e) {
-                        e.printStackTrace();
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                    Log.i("By Mohammed", "The download file number is: " + count);
-                    if(authenticationResult.contains("Matrices match"))
+                    FileInputStream FIS = getActivity().openFileInput(MasterFileName);
+                    int c;
+                    String tmp = "";
+                    while((c = FIS.read())!=-1)
                     {
-                        count++;
-                        Log.i("By Mohammed", "Authentication succeeded");
+                        tmp = tmp + Character.toString((char)c);
+                    }
+                    MatrixName = tmp;
+                    FIS = getActivity().openFileInput(MatrixName);
+                    c=0;
+                    tmp = "";
+                    while((c = FIS.read())!=-1)
+                    {
+                        tmp = tmp + Character.toString((char)c);
+                    }
+                    MatrixContent = tmp;
+                    MatrixName = MatrixName.replace("_","/");
+                    Log.i("By Mohammed", "Authentication after registeration ");
+                    Log.i("By Mohammed", "Previosly saved matrix is: " + MatrixContent + " , and the file name is: " + MatrixName);
+                    String result = new Authenticate().execute(AUTHENTICATION_URL+MatrixName+"&matrix="+MatrixContent).get();
+                    Log.i("By Mohammed", result);
+                    jo = new JSONObject(result);
+                    JSONaction = jo.getString("action");
+                    if(JSONaction.contentEquals("download"))
+                    {
+                        Log.i("By Mohammed", "secondary download");
+                        JSONtime = jo.getString("time");
+                        JSONcontent = jo.getString("content");
+                        MatrixContent = JSONcontent;
+                        MatrixName = accountName.replace("@","/");
+                        MasterFileName = MatrixName;
+                        MasterFileName = MasterFileName.replace("/","_");
+                        FileOutputStream FOS = getActivity().openFileOutput(MasterFileName,MODE_PRIVATE);
+                        MatrixName = MatrixName + "/" + JSONtime;
+                        MatrixName = MatrixName.replace("/","_");
+                        FOS.write(MatrixName.getBytes());
+                        FOS.close();
+                        FOS = getActivity().openFileOutput(MatrixName,MODE_PRIVATE);
+                        FOS.write(MatrixContent.getBytes());
+                        FOS.close();
+
+                        new Start().execute("http://192.168.100.88/nextcloud/security/start.php").get();
                         mContainerActivity.getFileOperationsHelper().syncFiles(checkedFiles);
+                        new End().execute("http://192.168.100.88/nextcloud/security/end.php").get();
                         exitSelectionMode();
                         return true;
                     }
@@ -1256,18 +1230,23 @@ public class OCFileListFragment extends ExtendedListFragment implements
                         Intent start = new Intent(getActivity(), FileDisplayActivity.class);
                         start.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
                         startActivity(start);
-
+                        //delete the matricies then
+                        //instruct the server to delete the mastricies or move them
                         return true;
                     }
 
+                    } catch (ExecutionException e) {
+                        e.printStackTrace();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
                 }
 
 
-
-
-                //mContainerActivity.getFileOperationsHelper().syncFiles(checkedFiles);
-                //exitSelectionMode();
-                //return true;
             }
             case R.id.action_cancel_sync: {
                 ((FileDisplayActivity) mContainerActivity).cancelTransference(checkedFiles);
@@ -1932,10 +1911,10 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
             } catch (MalformedURLException e) {
                 e.printStackTrace();
-                Log.i("ByMohammed","MalformedURLException");
+                Log.i("By Mohammed","MalformedURLException");
             } catch (IOException e) {
                 e.printStackTrace();
-                Log.i("ByMohammed","IOException");
+                Log.i("By Mohammed","IOException");
             } finally {
                 if (connection != null) {
                     connection.disconnect();
@@ -1999,16 +1978,16 @@ public class OCFileListFragment extends ExtendedListFragment implements
                     Log.e( "MAINACTIVITY-ERROR", e.getMessage());
 
                 }
-//                Log.d("ByMohammed ", "Enrollment status: " + buffer.toString());   //here u ll get whole response...... :-)
+//                Log.d("By Mohammed ", "Enrollment status: " + buffer.toString());   //here u ll get whole response...... :-)
                 return buffer.toString();
 
 
             } catch (MalformedURLException e) {
                 e.printStackTrace();
-                Log.i("ByMohammed","MalformedURLException");
+                Log.i("By Mohammed","MalformedURLException");
             } catch (IOException e) {
                 e.printStackTrace();
-                Log.i("ByMohammed","IOException");
+                Log.i("By Mohammed","IOException");
             } finally {
                 if (connection != null) {
                     connection.disconnect();
@@ -2069,7 +2048,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
                 while ((line = reader.readLine()) != null) {
                     buffer.append(line+"\n");
-                    Log.d("ByMohammed ", "Response  " + line);   //here u ll get whole response...... :-)
+                    Log.d("By Mohammed ", "Response  " + line);   //here u ll get whole response...... :-)
 
                 }
 
@@ -2078,10 +2057,10 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
             } catch (MalformedURLException e) {
                 e.printStackTrace();
-                Log.i("ByMohammed","MalformedURLException");
+                Log.i("By Mohammed","MalformedURLException");
             } catch (IOException e) {
                 e.printStackTrace();
-                Log.i("ByMohammed","IOException");
+                Log.i("By Mohammed","IOException");
             } finally {
                 if (connection != null) {
                     connection.disconnect();
@@ -2111,6 +2090,124 @@ public class OCFileListFragment extends ExtendedListFragment implements
 // private class GenerateUNTIDyMatrix extends AsyncTask<String,String,String>
 // private class GetUNTIDyMatrix extends AsyncTask<String,String,String>
 // private class Authenticate extends AsyncTask<String,String,String>
+    private class Start extends AsyncTask<String,String,String> {
+
+    protected void onPreExecute() {
+        super.onPreExecute();
+    }
+
+    protected String doInBackground(String... params) {
+
+
+        HttpURLConnection connection = null;
+        BufferedReader reader = null;
+        try {
+
+            URL url = new URL(params[0]);
+            connection = (HttpURLConnection) url.openConnection();
+            connection.connect();
+
+            InputStream stream = connection.getInputStream();
+
+            reader = new BufferedReader(new InputStreamReader(stream));
+
+            StringBuffer buffer = new StringBuffer();
+            String line = "";
+
+            while ((line = reader.readLine()) != null) {
+                buffer.append(line+"\n");
+                Log.d("By Mohammed ", "END");   //here u ll get whole response...... :-)
+
+            }
+            return String.valueOf(buffer.toString());
+
+
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+            Log.i("By Mohammed","MalformedURLException");
+        } catch (IOException e) {
+            e.printStackTrace();
+            Log.i("By Mohammed","IOException");
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+            try {
+                if (reader != null) {
+                    reader.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return null;
+    }
+
+    @Override
+    protected void onPostExecute(String result) {
+        super.onPostExecute(result);
+
+    }
+}
+    private class End extends AsyncTask<String,String,String> {
+
+    protected void onPreExecute() {
+        super.onPreExecute();
+    }
+
+    protected String doInBackground(String... params) {
+
+
+        HttpURLConnection connection = null;
+        BufferedReader reader = null;
+        try {
+
+            URL url = new URL(params[0]);
+            connection = (HttpURLConnection) url.openConnection();
+            connection.connect();
+
+            InputStream stream = connection.getInputStream();
+
+            reader = new BufferedReader(new InputStreamReader(stream));
+
+            StringBuffer buffer = new StringBuffer();
+            String line = "";
+
+            while ((line = reader.readLine()) != null) {
+                buffer.append(line+"\n");
+                Log.d("By Mohammed ", "END");   //here u ll get whole response...... :-)
+
+            }
+            return String.valueOf(buffer.toString());
+
+
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+            Log.i("By Mohammed","MalformedURLException");
+        } catch (IOException e) {
+            e.printStackTrace();
+            Log.i("By Mohammed","IOException");
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+            try {
+                if (reader != null) {
+                    reader.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return null;
+    }
+
+    @Override
+    protected void onPostExecute(String result) {
+        super.onPostExecute(result);
+
+    }
+}
 
 }
 
