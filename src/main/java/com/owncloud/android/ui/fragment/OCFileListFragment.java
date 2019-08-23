@@ -1227,6 +1227,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
                     else
                     {
                         Log.i("By Mohammed", "Authentication failed");
+                        file.delete();
                         Toast.makeText(getActivity(), "Authentication failed, clear NextCloud account",
                                        Toast.LENGTH_LONG).show();
                         AccountManager am = (AccountManager) getActivity().getSystemService(getActivity().ACCOUNT_SERVICE);
@@ -1237,6 +1238,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
                         Intent start = new Intent(getActivity(), FileDisplayActivity.class);
                         start.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
                         startActivity(start);
+
                         //delete the matricies then
                         //instruct the server to delete the mastricies or move them
                         return true;
