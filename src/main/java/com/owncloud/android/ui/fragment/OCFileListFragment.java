@@ -25,9 +25,11 @@
 package com.owncloud.android.ui.fragment;
 
 import android.accounts.Account;
+import android.accounts.AccountManager;
 import android.accounts.AuthenticatorException;
 import android.accounts.OperationCanceledException;
 import android.app.Activity;
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncTask;
@@ -36,6 +38,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.ActionMode;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -45,7 +48,10 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AbsListView;
 import android.widget.PopupMenu;
+import android.widget.RelativeLayout;
+import android.widget.Toast;
 
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.snackbar.Snackbar;
 import com.nextcloud.client.account.UserAccountManager;
 import com.nextcloud.client.device.DeviceInfo;
@@ -103,15 +109,25 @@ import org.apache.commons.httpclient.HttpStatus;
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.parceler.Parcels;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 
 import javax.inject.Inject;
 
@@ -125,20 +141,28 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+import java.io.FileOutputStream;
+import java.io.FileInputStream;
+import java.io.File;
 
+import static android.content.Context.MODE_PRIVATE;
 import static com.owncloud.android.datamodel.OCFile.ROOT_PATH;
+import static java.lang.Thread.sleep;
 
 /**
  * A Fragment that lists all files and folders in a given path.
  * TODO refactor to get rid of direct dependency on FileDisplayActivity
  */
+
+
 public class OCFileListFragment extends ExtendedListFragment implements
         OCFileListFragmentInterface,
         OCFileListBottomSheetActions,
         Injectable {
 
-    protected static final String TAG = OCFileListFragment.class.getSimpleName();
-
+    private static final String TAG = OCFileListFragment.class.getSimpleName();
+    public static final String KEY_ACCOUNT = "ACCOUNT"; // By Mohammed
+    private Account account; // By Moha,,ed
     private static final String MY_PACKAGE = OCFileListFragment.class.getPackage() != null ?
             OCFileListFragment.class.getPackage().getName() : "com.owncloud.android.ui.fragment";
 
@@ -160,45 +184,66 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
     private static final String KEY_FILE = MY_PACKAGE + ".extra.FILE";
 
-    protected static final String KEY_CURRENT_SEARCH_TYPE = "CURRENT_SEARCH_TYPE";
+    private static final String KEY_CURRENT_SEARCH_TYPE = "CURRENT_SEARCH_TYPE";
 
     private static final String DIALOG_CREATE_FOLDER = "DIALOG_CREATE_FOLDER";
     private static final String DIALOG_CREATE_DOCUMENT = "DIALOG_CREATE_DOCUMENT";
 
     private static final int SINGLE_SELECTION = 1;
 
+    ProgressDialog pd1;
+    ProgressDialog pd2;
+    ProgressDialog pd3;
+    int count = 0;
+    String UNTIDyMatrix = null;
+    String AUTHENTICATION_URL = "http://192.168.100.88/nextcloud/security/authenticate.php?account=";
+    String authenticationResult = null;
+    String MatrixName;
+    String MatrixContent;
+    String accountName;
+    JSONObject jo;
+    String JSONaction;
+    String JSONtime;
+    String JSONcontent;
+    String MasterFileName;
+    boolean MatrixExist=false;
+    boolean authenticated = false;
+
+
     @Inject AppPreferences preferences;
     @Inject UserAccountManager accountManager;
-    protected FileFragment.ContainerActivity mContainerActivity;
+    private FileFragment.ContainerActivity mContainerActivity;
 
-    protected OCFile mFile;
-    protected OCFileListAdapter mAdapter;
-    protected boolean mOnlyFoldersClickable;
-    protected boolean mFileSelectable;
+    private OCFile mFile;
+    private OCFileListAdapter mAdapter;
+    private boolean mOnlyFoldersClickable;
+    private boolean mFileSelectable;
 
-    protected int mSystemBarActionModeColor;
-    protected int mSystemBarColor;
-    protected int mProgressBarActionModeColor;
-    protected int mProgressBarColor;
+    private int mSystemBarActionModeColor;
+    private int mSystemBarColor;
+    private int mProgressBarActionModeColor;
+    private int mProgressBarColor;
 
-    protected boolean mHideFab = true;
-    protected ActionMode mActiveActionMode;
-    protected OCFileListFragment.MultiChoiceModeListener mMultiChoiceModeListener;
+    private boolean mHideFab = true;
+    private ActionMode mActiveActionMode;
+    private OCFileListFragment.MultiChoiceModeListener mMultiChoiceModeListener;
 
-    protected SearchType currentSearchType;
-    protected boolean searchFragment;
-    protected SearchEvent searchEvent;
-    protected AsyncTask remoteOperationAsyncTask;
-    protected String mLimitToMimeType;
+    private BottomNavigationView bottomNavigationView;
+
+    private SearchType currentSearchType;
+    private boolean searchFragment;
+    private SearchEvent searchEvent;
+    private AsyncTask remoteOperationAsyncTask;
+    private String mLimitToMimeType;
 
     @Inject DeviceInfo deviceInfo;
 
-    protected enum MenuItemAddRemove {
+    private enum MenuItemAddRemove {
         DO_NOTHING, REMOVE_SORT, REMOVE_GRID_AND_SORT, ADD_SORT, ADD_GRID_AND_SORT, ADD_GRID_AND_SORT_WITH_SEARCH,
         REMOVE_SEARCH
     }
 
-    protected MenuItemAddRemove menuItemAddRemoveValue = MenuItemAddRemove.DO_NOTHING;
+    private MenuItemAddRemove menuItemAddRemoveValue = MenuItemAddRemove.DO_NOTHING;
 
     private List<MenuItem> mOriginalMenuItems = new ArrayList<>();
 
@@ -236,7 +281,6 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
         super.onResume();
     }
-
 
     /**
      * {@inheritDoc}
@@ -304,10 +348,6 @@ public class OCFileListFragment extends ExtendedListFragment implements
     public void onPause() {
         super.onPause();
         mAdapter.cancelAllPendingTasks();
-
-        if (getActivity() != null) {
-            getActivity().getIntent().removeExtra(OCFileListFragment.SEARCH_EVENT);
-        }
     }
 
 
@@ -351,11 +391,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
             registerFabListener();
         }
 
-        if (getArguments() == null) {
-            searchEvent = null;
-        } else {
-            searchEvent = Parcels.unwrap(getArguments().getParcelable(OCFileListFragment.SEARCH_EVENT));
-        }
+        searchEvent = Parcels.unwrap(getArguments().getParcelable(OCFileListFragment.SEARCH_EVENT));
         prepareCurrentSearch(searchEvent);
 
         if (isGridViewPreferred(getCurrentFile())) {
@@ -365,25 +401,25 @@ public class OCFileListFragment extends ExtendedListFragment implements
         setTitle();
     }
 
-    protected void prepareCurrentSearch(SearchEvent event) {
+    private void prepareCurrentSearch(SearchEvent event) {
         if (isSearchEventSet(event)) {
+            if (SearchRemoteOperation.SearchType.FILE_SEARCH.equals(event.getSearchType())) {
+                currentSearchType = SearchType.FILE_SEARCH;
 
-            switch (event.getSearchType()) {
-                case FILE_SEARCH:
-                    currentSearchType = SearchType.FILE_SEARCH;
-                    break;
-
-                case FAVORITE_SEARCH:
-                    currentSearchType = SearchType.FAVORITE_SEARCH;
-                    break;
-
-                case RECENTLY_MODIFIED_SEARCH:
-                    currentSearchType = SearchType.RECENTLY_MODIFIED_SEARCH;
-                    break;
-
-                default:
-                    // do nothing
-                    break;
+            } else if (SearchRemoteOperation.SearchType.CONTENT_TYPE_SEARCH.equals(event.getSearchType())) {
+                if ("image/%".equals(event.getSearchQuery())) {
+                    currentSearchType = SearchType.PHOTO_SEARCH;
+                } else if ("video/%".equals(event.getSearchQuery())) {
+                    currentSearchType = SearchType.VIDEO_SEARCH;
+                }
+            } else if (SearchRemoteOperation.SearchType.FAVORITE_SEARCH.equals(event.getSearchType())) {
+                currentSearchType = SearchType.FAVORITE_SEARCH;
+            } else if (SearchRemoteOperation.SearchType.RECENTLY_ADDED_SEARCH.equals(event.getSearchType())) {
+                currentSearchType = SearchType.RECENTLY_ADDED_SEARCH;
+            } else if (SearchRemoteOperation.SearchType.RECENTLY_MODIFIED_SEARCH.equals(event.getSearchType())) {
+                currentSearchType = SearchType.RECENTLY_MODIFIED_SEARCH;
+            } else if (SearchRemoteOperation.SearchType.SHARED_SEARCH.equals(event.getSearchType())) {
+                currentSearchType = SearchType.SHARED_FILTER;
             }
 
             prepareActionBarItems(event);
@@ -665,7 +701,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
     /**
      * Init listener that will handle interactions in multiple selection mode.
      */
-    protected void setChoiceModeAsMultipleModal(Bundle savedInstanceState) {
+    private void setChoiceModeAsMultipleModal(Bundle savedInstanceState) {
         if (savedInstanceState != null) {
             mMultiChoiceModeListener.loadStateFrom(savedInstanceState);
         }
@@ -1047,9 +1083,170 @@ public class OCFileListFragment extends ExtendedListFragment implements
             }
             case R.id.action_download_file:
             case R.id.action_sync_file: {
-                mContainerActivity.getFileOperationsHelper().syncFiles(checkedFiles);
-                exitSelectionMode();
-                return true;
+                // By Mohammed, main file display page
+//                if(true) { // prevent downloading
+//                    Log.i("By Mohammed", "I tried to download this file, main page that lists all the files");
+//                    AccountManager am = (AccountManager) getActivity().getSystemService(Context.ACCOUNT_SERVICE);
+//                    Account account = ((FileActivity) mContainerActivity).getAccount();
+//                    am.removeAccount(account, null, null);
+//                    Intent start = new Intent(getActivity(), FileDisplayActivity.class);
+//                    start.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+//                    startActivity(start);
+//                    return true;
+//                }
+//                else{
+
+                //1 - Determine did we have previously an UNTIDyMatrix,,,, or not
+
+                account = accountManager.getCurrentAccount();
+                accountName = account.name;
+                MatrixName = accountName.replace("@","/");
+                MasterFileName = MatrixName;
+                MasterFileName = MasterFileName.replace("/","_");
+
+                File file = new File(getContext().getFilesDir(),MasterFileName);
+                if(file.exists()){
+                    MatrixExist=true;
+                    Log.i("By Mohd", "There is a matrix");
+                }
+                else{
+                    MatrixExist=false;
+                    Log.i("By Mohd", "Fresh install");
+                }
+
+                if(!MatrixExist) { // if no UNITDYMatrix were downloaded before
+
+
+                    try {
+                        Log.i("By Mohd", "Account name is: " + accountName);
+                        UNTIDyMatrix = new RegisterUNTIDy().execute("http://192.168.100.88/nextcloud/security/register.php?account=" + accountName + "&status=reset").get();
+                        Log.i("By Mohammed", "Registeration Reply is: " + UNTIDyMatrix);
+                        jo = new JSONObject(UNTIDyMatrix);
+                        JSONaction = jo.getString("action");
+                        System.out.println("Evaluation" + JSONaction.contentEquals("download"));
+
+                        if (JSONaction.contentEquals("download")) {
+                            Log.i("By Mohammed", "Registeration initial download ");
+                            JSONtime = jo.getString("time");
+                            JSONcontent = jo.getString("content");
+                            MatrixContent = JSONcontent;
+                            MatrixName = accountName.replace("@", "/");
+                            MasterFileName = MatrixName;
+                            MasterFileName = MasterFileName.replace("/", "_");
+                            Log.i("By Mohd", "MasterFileName name is: " + MasterFileName);
+                            FileOutputStream FOS = getActivity().openFileOutput(MasterFileName, MODE_PRIVATE);
+                            MatrixName = MatrixName + "/" + JSONtime;
+                            MatrixName = MatrixName.replace("/", "_");
+                            Log.i("By Mohd", "MatrixName name is: " + MatrixName);
+                            FOS.write(MatrixName.getBytes());
+                            FOS.close();
+                            FOS = getActivity().openFileOutput(MatrixName, MODE_PRIVATE);
+                            FOS.write(MatrixContent.getBytes());
+                            FOS.close();
+                            new Start().execute("http://192.168.100.88/nextcloud/security/start.php").get();
+                            mContainerActivity.getFileOperationsHelper().syncFiles(checkedFiles);
+                            new End().execute("http://192.168.100.88/nextcloud/security/end.php").get();
+                            exitSelectionMode();
+                            return true;
+
+                        }
+
+                    } catch (ExecutionException e) {
+                        e.printStackTrace();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+
+                }
+                else
+                {
+
+                    MatrixName = accountName.replace("@","/");
+                    MatrixName = MatrixName.replace("/","_");
+                    MasterFileName = MatrixName;
+                    try{
+
+                    FileInputStream FIS = getActivity().openFileInput(MasterFileName);
+                    int c;
+                    String tmp = "";
+                    while((c = FIS.read())!=-1)
+                    {
+                        tmp = tmp + Character.toString((char)c);
+                    }
+                    MatrixName = tmp;
+                    FIS = getActivity().openFileInput(MatrixName);
+                    c=0;
+                    tmp = "";
+                    while((c = FIS.read())!=-1)
+                    {
+                        tmp = tmp + Character.toString((char)c);
+                    }
+                    MatrixContent = tmp;
+                    MatrixName = MatrixName.replace("_","/");
+                    Log.i("By Mohammed", "Authentication after registeration ");
+                    Log.i("By Mohammed", "Previosly saved matrix is: " + MatrixContent + " , and the file name is: " + MatrixName);
+                    String result = new Authenticate().execute(AUTHENTICATION_URL+MatrixName+"&matrix="+MatrixContent).get();
+                    Log.i("By Mohammed", result);
+                    jo = new JSONObject(result);
+                    JSONaction = jo.getString("action");
+                    if(JSONaction.contentEquals("download"))
+                    {
+                        Log.i("By Mohammed", "secondary download");
+                        JSONtime = jo.getString("time");
+                        JSONcontent = jo.getString("content");
+                        MatrixContent = JSONcontent;
+                        MatrixName = accountName.replace("@","/");
+                        MasterFileName = MatrixName;
+                        MasterFileName = MasterFileName.replace("/","_");
+                        FileOutputStream FOS = getActivity().openFileOutput(MasterFileName,MODE_PRIVATE);
+                        MatrixName = MatrixName + "/" + JSONtime;
+                        MatrixName = MatrixName.replace("/","_");
+                        FOS.write(MatrixName.getBytes());
+                        FOS.close();
+                        FOS = getActivity().openFileOutput(MatrixName,MODE_PRIVATE);
+                        FOS.write(MatrixContent.getBytes());
+                        FOS.close();
+
+                        new Start().execute("http://192.168.100.88/nextcloud/security/start.php").get();
+                        mContainerActivity.getFileOperationsHelper().syncFiles(checkedFiles);
+                        new End().execute("http://192.168.100.88/nextcloud/security/end.php").get();
+                        exitSelectionMode();
+                        return true;
+                    }
+                    else
+                    {
+                        Log.i("By Mohammed", "Authentication failed");
+                        Toast.makeText(getActivity(), "Authentication failed, clear NextCloud account",
+                                       Toast.LENGTH_LONG).show();
+                        AccountManager am = (AccountManager) getActivity().getSystemService(getActivity().ACCOUNT_SERVICE);
+                        account = accountManager.getCurrentAccount();
+                        Log.i("By Mohammed", "the account name is: " + account.name);
+                        am.removeAccount(account, null, null);
+                        getActivity().finish();
+                        Intent start = new Intent(getActivity(), FileDisplayActivity.class);
+                        start.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                        startActivity(start);
+                        //delete the matricies then
+                        //instruct the server to delete the mastricies or move them
+                        return true;
+                    }
+
+                    } catch (ExecutionException e) {
+                        e.printStackTrace();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+
+
             }
             case R.id.action_cancel_sync: {
                 ((FileDisplayActivity) mContainerActivity).cancelTransference(checkedFiles);
@@ -1058,6 +1255,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
             case R.id.action_favorite: {
                 mContainerActivity.getFileOperationsHelper().toggleFavoriteFiles(checkedFiles, true);
                 return true;
+
             }
             case R.id.action_unset_favorite: {
                 mContainerActivity.getFileOperationsHelper().toggleFavoriteFiles(checkedFiles, false);
@@ -1335,6 +1533,9 @@ public class OCFileListFragment extends ExtendedListFragment implements
                 case FAVORITE_SEARCH:
                     setTitle(R.string.drawer_item_favorites);
                     break;
+                case PHOTO_SEARCH:
+                    setTitle(R.string.drawer_item_photos);
+                    break;
                 case VIDEO_SEARCH:
                     setTitle(R.string.drawer_item_videos);
                     break;
@@ -1355,20 +1556,22 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
     }
 
-    protected void prepareActionBarItems(SearchEvent event) {
+    private void prepareActionBarItems(SearchEvent event) {
         if (event != null) {
-            switch (event.getSearchType()) {
-                case FAVORITE_SEARCH:
-                    menuItemAddRemoveValue = MenuItemAddRemove.REMOVE_SORT;
-                    break;
-
-                case RECENTLY_MODIFIED_SEARCH:
-                    menuItemAddRemoveValue = MenuItemAddRemove.REMOVE_SORT;
-                    break;
-
-                default:
-                    // do nothing
-                    break;
+            if (SearchRemoteOperation.SearchType.CONTENT_TYPE_SEARCH.equals(event.getSearchType())) {
+                if ("image/%".equals(event.getSearchQuery())) {
+                    menuItemAddRemoveValue = MenuItemAddRemove.REMOVE_GRID_AND_SORT;
+                } else if ("video/%".equals(event.getSearchQuery())) {
+                    menuItemAddRemoveValue = MenuItemAddRemove.REMOVE_SEARCH;
+                }
+            } else if (SearchRemoteOperation.SearchType.FAVORITE_SEARCH.equals(event.getSearchType())) {
+                menuItemAddRemoveValue = MenuItemAddRemove.REMOVE_SORT;
+            } else if (SearchRemoteOperation.SearchType.RECENTLY_ADDED_SEARCH.equals(event.getSearchType())) {
+                menuItemAddRemoveValue = MenuItemAddRemove.REMOVE_SORT;
+            } else if (SearchRemoteOperation.SearchType.RECENTLY_MODIFIED_SEARCH.equals(event.getSearchType())) {
+                menuItemAddRemoveValue = MenuItemAddRemove.REMOVE_SORT;
+            } else if (SearchRemoteOperation.SearchType.SHARED_SEARCH.equals(event.getSearchType())) {
+                menuItemAddRemoveValue = MenuItemAddRemove.REMOVE_SEARCH;
             }
         }
 
@@ -1378,23 +1581,24 @@ public class OCFileListFragment extends ExtendedListFragment implements
     }
 
     private void setEmptyView(SearchEvent event) {
+
         if (event != null) {
-            switch (event.getSearchType()) {
-                case FILE_SEARCH:
-                    setEmptyListMessage(SearchType.FILE_SEARCH);
-                    break;
-
-                case FAVORITE_SEARCH:
-                    setEmptyListMessage(SearchType.FAVORITE_SEARCH);
-                    break;
-
-                case RECENTLY_MODIFIED_SEARCH:
-                    setEmptyListMessage(SearchType.RECENTLY_MODIFIED_SEARCH);
-                    break;
-
-                default:
-                    setEmptyListMessage(SearchType.NO_SEARCH);
-                    break;
+            if (SearchRemoteOperation.SearchType.FILE_SEARCH == event.getSearchType()) {
+                setEmptyListMessage(SearchType.FILE_SEARCH);
+            } else if (event.getSearchType() == SearchRemoteOperation.SearchType.CONTENT_TYPE_SEARCH) {
+                if ("image/%".equals(event.getSearchQuery())) {
+                    setEmptyListMessage(SearchType.PHOTO_SEARCH);
+                } else if ("video/%".equals(event.getSearchQuery())) {
+                    setEmptyListMessage(SearchType.VIDEO_SEARCH);
+                }
+            } else if (SearchRemoteOperation.SearchType.FAVORITE_SEARCH == event.getSearchType()) {
+                setEmptyListMessage(SearchType.FAVORITE_SEARCH);
+            } else if (SearchRemoteOperation.SearchType.RECENTLY_ADDED_SEARCH == event.getSearchType()) {
+                setEmptyListMessage(SearchType.RECENTLY_ADDED_SEARCH);
+            } else if (SearchRemoteOperation.SearchType.RECENTLY_MODIFIED_SEARCH == event.getSearchType()) {
+                setEmptyListMessage(SearchType.RECENTLY_MODIFIED_SEARCH);
+            } else if (SearchRemoteOperation.SearchType.SHARED_SEARCH == event.getSearchType()) {
+                setEmptyListMessage(SearchType.SHARED_FILTER);
             }
         }
     }
@@ -1449,14 +1653,10 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
     @Subscribe(threadMode = ThreadMode.BACKGROUND)
     public void onMessageEvent(final SearchEvent event) {
-        if (SearchRemoteOperation.SearchType.PHOTO_SEARCH == event.searchType) {
-            return;
-        }
-
         prepareCurrentSearch(event);
         searchFragment = true;
         setEmptyListLoadingMessage();
-        mAdapter.setData(new ArrayList<>(), SearchType.NO_SEARCH, mContainerActivity.getStorageManager(), mFile, true);
+        mAdapter.setData(new ArrayList<>(), SearchType.NO_SEARCH, mContainerActivity.getStorageManager(), mFile);
 
         setFabVisible(false);
 
@@ -1474,7 +1674,11 @@ public class OCFileListFragment extends ExtendedListFragment implements
             }
         };
 
-        new Handler(Looper.getMainLooper()).post(switchViewsRunnable);
+        if (currentSearchType == SearchType.PHOTO_SEARCH) {
+            new Handler(Looper.getMainLooper()).post(this::switchToGridView);
+        } else {
+            new Handler(Looper.getMainLooper()).post(switchViewsRunnable);
+        }
 
         final Account currentAccount = accountManager.getCurrentAccount();
 
@@ -1504,15 +1708,11 @@ public class OCFileListFragment extends ExtendedListFragment implements
                     }
 
                     if (remoteOperationResult.isSuccess() && remoteOperationResult.getData() != null
-                        && !isCancelled() && searchFragment) {
+                            && !isCancelled() && searchFragment) {
                         if (remoteOperationResult.getData() == null || remoteOperationResult.getData().size() == 0) {
                             setEmptyView(event);
                         } else {
-                            mAdapter.setData(remoteOperationResult.getData(),
-                                             currentSearchType,
-                                             storageManager,
-                                             mFile,
-                                             true);
+                            mAdapter.setData(remoteOperationResult.getData(), currentSearchType, storageManager, mFile);
                             searchEvent = event;
                         }
 
@@ -1580,22 +1780,28 @@ public class OCFileListFragment extends ExtendedListFragment implements
         }
     }
 
-    protected void setTitle(@StringRes final int title) {
-        getActivity().runOnUiThread(() -> {
-            if (getActivity() != null && ((FileDisplayActivity) getActivity()).getSupportActionBar() != null) {
-                ThemeUtils.setColoredTitle(((FileDisplayActivity) getActivity()).getSupportActionBar(),
-                                           title, getContext());
+    private void setTitle(@StringRes final int title) {
+        getActivity().runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (getActivity() != null && ((FileDisplayActivity) getActivity()).getSupportActionBar() != null) {
+                    ThemeUtils.setColoredTitle(((FileDisplayActivity) getActivity()).getSupportActionBar(),
+                            title, getContext());
+                }
             }
         });
     }
 
-    protected void setTitle(final String title) {
-        getActivity().runOnUiThread(() -> {
-            if (getActivity() != null) {
-                ActionBar actionBar = ((FileDisplayActivity) getActivity()).getSupportActionBar();
+    private void setTitle(final String title) {
+        getActivity().runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (getActivity() != null) {
+                    ActionBar actionBar = ((FileDisplayActivity) getActivity()).getSupportActionBar();
 
-                if (actionBar != null) {
-                    ThemeUtils.setColoredTitle(actionBar, title, getContext());
+                    if (actionBar != null) {
+                        ThemeUtils.setColoredTitle(actionBar, title, getContext());
+                    }
                 }
             }
         });
@@ -1671,8 +1877,340 @@ public class OCFileListFragment extends ExtendedListFragment implements
             && event.getUnsetType() != null;
     }
 
+
+
+    private class GenerateUNTIDyMatrix extends AsyncTask<String,String,String> {
+
+        protected void onPreExecute() {
+            super.onPreExecute();
+
+            pd2 = new ProgressDialog(getActivity());
+            pd2.setMessage("Check UNTIDyMatrix on the server");
+            pd2.setCancelable(false);
+            pd2.show();
+
+        }
+
+        protected String doInBackground(String... params) {
+
+
+            HttpURLConnection connection = null;
+
+            int code;
+
+            try {
+                URL url = new URL(params[0]);
+                connection = (HttpURLConnection) url.openConnection();
+                connection.connect();
+
+                code = connection.getResponseCode();
+
+
+                return String.valueOf(code);
+
+
+            } catch (MalformedURLException e) {
+                e.printStackTrace();
+                Log.i("By Mohammed","MalformedURLException");
+            } catch (IOException e) {
+                e.printStackTrace();
+                Log.i("By Mohammed","IOException");
+            } finally {
+                if (connection != null) {
+                    connection.disconnect();
+                }
+
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(String result) {
+            super.onPostExecute(result);
+            if (pd2.isShowing())
+                pd2.dismiss();
+                Toast.makeText(getActivity(), "UNTIDyMatrix has been generated on the server. It will be downloaded soon",
+                               Toast.LENGTH_LONG).show();
+
+        }
+    }
+    private class RegisterUNTIDy extends AsyncTask<String,String,String> {
+
+        protected void onPreExecute() {
+            super.onPreExecute();
+            pd1 = new ProgressDialog(getActivity());
+            pd1.setMessage("Check enrollment status");
+            pd1.setCancelable(false);
+            pd1.show();
+        }
+
+        protected String doInBackground(String... params) {
+
+
+            HttpURLConnection connection = null;
+            BufferedReader reader = null;
+
+            try {
+
+                URL url = new URL(params[0]);
+                connection = (HttpURLConnection) url.openConnection();
+                connection.connect();
+
+                InputStream stream = connection.getInputStream();
+
+                reader = new BufferedReader(new InputStreamReader(stream));
+
+                StringBuffer buffer = new StringBuffer();
+                String line = "";
+
+                while ((line = reader.readLine()) != null) {
+                    buffer.append(line+"\n");
+
+
+                }
+
+                try
+                {
+                    Thread.sleep( 2 * 1000 );
+                }
+                catch ( InterruptedException e )
+                {
+                    Log.e( "MAINACTIVITY-ERROR", e.getMessage());
+
+                }
+//                Log.d("By Mohammed ", "Enrollment status: " + buffer.toString());   //here u ll get whole response...... :-)
+                return buffer.toString();
+
+
+            } catch (MalformedURLException e) {
+                e.printStackTrace();
+                Log.i("By Mohammed","MalformedURLException");
+            } catch (IOException e) {
+                e.printStackTrace();
+                Log.i("By Mohammed","IOException");
+            } finally {
+                if (connection != null) {
+                    connection.disconnect();
+                }
+                try {
+                    if (reader != null) {
+                        reader.close();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(String result) {
+            super.onPostExecute(result);
+
+            if (pd1.isShowing()){
+                pd1.dismiss();
+                Toast.makeText(getActivity(), "Registeration reply received",
+                               Toast.LENGTH_LONG).show();
+            }
+
+
+
+
+        }
+
+
+    }
+    private class Authenticate extends AsyncTask<String,String,String> {
+
+        protected void onPreExecute() {
+            super.onPreExecute();
+
+
+        }
+
+        protected String doInBackground(String... params) {
+
+
+            HttpURLConnection connection = null;
+            BufferedReader reader = null;
+            try {
+
+                URL url = new URL(params[0]);
+                connection = (HttpURLConnection) url.openConnection();
+                connection.connect();
+
+                InputStream stream = connection.getInputStream();
+
+                reader = new BufferedReader(new InputStreamReader(stream));
+
+                StringBuffer buffer = new StringBuffer();
+                String line = "";
+
+                while ((line = reader.readLine()) != null) {
+                    buffer.append(line+"\n");
+                    Log.d("By Mohammed ", "Response  " + line);   //here u ll get whole response...... :-)
+
+                }
+
+                return String.valueOf(buffer.toString());
+
+
+            } catch (MalformedURLException e) {
+                e.printStackTrace();
+                Log.i("By Mohammed","MalformedURLException");
+            } catch (IOException e) {
+                e.printStackTrace();
+                Log.i("By Mohammed","IOException");
+            } finally {
+                if (connection != null) {
+                    connection.disconnect();
+                }
+                try {
+                    if (reader != null) {
+                        reader.close();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(String result) {
+            super.onPostExecute(result);
+
+                Toast.makeText(getActivity(), result,
+                               Toast.LENGTH_LONG).show();
+
+
+        }
+    }
+
+// private class GenerateUNTIDyMatrix extends AsyncTask<String,String,String>
+// private class GetUNTIDyMatrix extends AsyncTask<String,String,String>
+// private class Authenticate extends AsyncTask<String,String,String>
+    private class Start extends AsyncTask<String,String,String> {
+
+    protected void onPreExecute() {
+        super.onPreExecute();
+    }
+
+    protected String doInBackground(String... params) {
+
+
+        HttpURLConnection connection = null;
+        BufferedReader reader = null;
+        try {
+
+            URL url = new URL(params[0]);
+            connection = (HttpURLConnection) url.openConnection();
+            connection.connect();
+
+            InputStream stream = connection.getInputStream();
+
+            reader = new BufferedReader(new InputStreamReader(stream));
+
+            StringBuffer buffer = new StringBuffer();
+            String line = "";
+
+            while ((line = reader.readLine()) != null) {
+                buffer.append(line+"\n");
+                Log.d("By Mohammed ", "END");   //here u ll get whole response...... :-)
+
+            }
+            return String.valueOf(buffer.toString());
+
+
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+            Log.i("By Mohammed","MalformedURLException");
+        } catch (IOException e) {
+            e.printStackTrace();
+            Log.i("By Mohammed","IOException");
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+            try {
+                if (reader != null) {
+                    reader.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return null;
+    }
+
     @Override
-    public boolean isLoading() {
-        return false;
+    protected void onPostExecute(String result) {
+        super.onPostExecute(result);
+
     }
 }
+    private class End extends AsyncTask<String,String,String> {
+
+    protected void onPreExecute() {
+        super.onPreExecute();
+    }
+
+    protected String doInBackground(String... params) {
+
+
+        HttpURLConnection connection = null;
+        BufferedReader reader = null;
+        try {
+
+            URL url = new URL(params[0]);
+            connection = (HttpURLConnection) url.openConnection();
+            connection.connect();
+
+            InputStream stream = connection.getInputStream();
+
+            reader = new BufferedReader(new InputStreamReader(stream));
+
+            StringBuffer buffer = new StringBuffer();
+            String line = "";
+
+            while ((line = reader.readLine()) != null) {
+                buffer.append(line+"\n");
+                Log.d("By Mohammed ", "END");   //here u ll get whole response...... :-)
+
+            }
+            return String.valueOf(buffer.toString());
+
+
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+            Log.i("By Mohammed","MalformedURLException");
+        } catch (IOException e) {
+            e.printStackTrace();
+            Log.i("By Mohammed","IOException");
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+            try {
+                if (reader != null) {
+                    reader.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return null;
+    }
+
+    @Override
+    protected void onPostExecute(String result) {
+        super.onPostExecute(result);
+
+    }
+}
+
+}
+
+
+
+
