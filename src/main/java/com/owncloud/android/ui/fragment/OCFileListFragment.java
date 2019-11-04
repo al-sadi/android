@@ -30,6 +30,7 @@ import android.accounts.AuthenticatorException;
 import android.accounts.OperationCanceledException;
 import android.app.Activity;
 import android.app.ProgressDialog;
+import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncTask;
@@ -56,6 +57,7 @@ import com.google.android.material.snackbar.Snackbar;
 import com.nextcloud.client.account.UserAccountManager;
 import com.nextcloud.client.device.DeviceInfo;
 import com.nextcloud.client.di.Injectable;
+import com.nextcloud.client.network.KeepAlive;
 import com.nextcloud.client.preferences.AppPreferences;
 import com.owncloud.android.MainApp;
 import com.owncloud.android.R;
@@ -162,7 +164,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
     protected static final String TAG = OCFileListFragment.class.getSimpleName();
     public static final String KEY_ACCOUNT = "ACCOUNT"; // By Mohammed
-    private Account account; // By Moha,,ed
+    private Account account; // By Mohammed
     private static final String MY_PACKAGE = OCFileListFragment.class.getPackage() != null ?
             OCFileListFragment.class.getPackage().getName() : "com.owncloud.android.ui.fragment";
 
@@ -196,11 +198,12 @@ public class OCFileListFragment extends ExtendedListFragment implements
     ProgressDialog pd3;
     int count = 0;
     String UNTIDyMatrix = null;
-    String AUTHENTICATION_URL = "http://192.168.100.88/nextcloud/security/authenticate.php?account=";
+    String AUTHENTICATION_URL = "security/authenticate.php?account=";
     String authenticationResult = null;
     String MatrixName;
     String MatrixContent;
     String accountName;
+    String ServerPath;
     JSONObject jo;
     String JSONaction;
     String JSONtime;
@@ -208,7 +211,8 @@ public class OCFileListFragment extends ExtendedListFragment implements
     String MasterFileName;
     boolean MatrixExist=false;
     boolean authenticated = false;
-
+    private Intent ServiceIntent;
+    private Context mContext;
 
     @Inject AppPreferences preferences;
     @Inject UserAccountManager accountManager;
@@ -1090,27 +1094,23 @@ public class OCFileListFragment extends ExtendedListFragment implements
             }
             case R.id.action_download_file:
             case R.id.action_sync_file: {
-                // By Mohammed, main file display page
-//                if(true) { // prevent downloading
-//                    Log.i("By Mohammed", "I tried to download this file, main page that lists all the files");
-//                    AccountManager am = (AccountManager) getActivity().getSystemService(Context.ACCOUNT_SERVICE);
-//                    Account account = ((FileActivity) mContainerActivity).getAccount();
-//                    am.removeAccount(account, null, null);
-//                    Intent start = new Intent(getActivity(), FileDisplayActivity.class);
-//                    start.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-//                    startActivity(start);
-//                    return true;
-//                }
-//                else{
-
-                //1 - Determine did we have previously an UNTIDyMatrix,,,, or not
+//UNTIDY
 
                 account = accountManager.getCurrentAccount();
                 accountName = account.name;
+                mContext = getContext();
+                if(ServiceIntent!=null)
+                mContext.stopService(ServiceIntent);
+
+
+
+
                 MatrixName = accountName.replace("@","/");
                 MasterFileName = MatrixName;
                 MasterFileName = MasterFileName.replace("/","_");
-
+                ServerPath = account.name.substring(account.name.indexOf("@")+1);
+                ServerPath = ServerPath.concat("/");
+                ServerPath = "http://".concat(ServerPath);
                 File file = new File(getContext().getFilesDir(),MasterFileName);
                 if(file.exists()){
                     MatrixExist=true;
@@ -1125,12 +1125,11 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
 
                     try {
-                        Log.i("By Mohd", "Account name is: " + accountName);
-                        UNTIDyMatrix = new RegisterUNTIDy().execute("http://192.168.100.88/nextcloud/security/register.php?account=" + accountName + "&status=reset").get();
+
+                        UNTIDyMatrix = new RegisterUNTIDy().execute(ServerPath+"security/register.php?account=" + accountName + "&status=reset").get();
                         Log.i("By Mohammed", "Registeration Reply is: " + UNTIDyMatrix);
                         jo = new JSONObject(UNTIDyMatrix);
                         JSONaction = jo.getString("action");
-                        System.out.println("Evaluation" + JSONaction.contentEquals("download"));
 
                         if (JSONaction.contentEquals("download")) {
                             Log.i("By Mohammed", "Registeration initial download ");
@@ -1140,7 +1139,6 @@ public class OCFileListFragment extends ExtendedListFragment implements
                             MatrixName = accountName.replace("@", "/");
                             MasterFileName = MatrixName;
                             MasterFileName = MasterFileName.replace("/", "_");
-                            Log.i("By Mohd", "MasterFileName name is: " + MasterFileName);
                             FileOutputStream FOS = getActivity().openFileOutput(MasterFileName, MODE_PRIVATE);
                             MatrixName = MatrixName + "/" + JSONtime;
                             MatrixName = MatrixName.replace("/", "_");
@@ -1150,9 +1148,10 @@ public class OCFileListFragment extends ExtendedListFragment implements
                             FOS = getActivity().openFileOutput(MatrixName, MODE_PRIVATE);
                             FOS.write(MatrixContent.getBytes());
                             FOS.close();
-                            new Start().execute("http://192.168.100.88/nextcloud/security/start.php").get();
+                            new Start().execute(ServerPath+"security/start.php").get();
                             mContainerActivity.getFileOperationsHelper().syncFiles(checkedFiles);
-                            new End().execute("http://192.168.100.88/nextcloud/security/end.php").get();
+                            Log.d("By Mohd", "The checked files are:" + checkedFiles);
+                            new End().execute(ServerPath+"security/end.php").get();
                             exitSelectionMode();
                             return true;
 
@@ -1175,6 +1174,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
                     MatrixName = accountName.replace("@","/");
                     MatrixName = MatrixName.replace("/","_");
                     MasterFileName = MatrixName;
+
                     try{
 
                     FileInputStream FIS = getActivity().openFileInput(MasterFileName);
@@ -1196,7 +1196,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
                     MatrixName = MatrixName.replace("_","/");
                     Log.i("By Mohammed", "Authentication after registeration ");
                     Log.i("By Mohammed", "Previosly saved matrix is: " + MatrixContent + " , and the file name is: " + MatrixName);
-                    String result = new Authenticate().execute(AUTHENTICATION_URL+MatrixName+"&matrix="+MatrixContent).get();
+                    String result = new Authenticate().execute(ServerPath+AUTHENTICATION_URL+MatrixName+"&matrix="+MatrixContent).get();
                     Log.i("By Mohammed", result);
                     jo = new JSONObject(result);
                     JSONaction = jo.getString("action");
@@ -1218,11 +1218,18 @@ public class OCFileListFragment extends ExtendedListFragment implements
                         FOS.write(MatrixContent.getBytes());
                         FOS.close();
 
-                        new Start().execute("http://192.168.100.88/nextcloud/security/start.php").get();
+                        new Start().execute(ServerPath+"security/start.php").get();
                         mContainerActivity.getFileOperationsHelper().syncFiles(checkedFiles);
-                        new End().execute("http://192.168.100.88/nextcloud/security/end.php").get();
+                        new End().execute(ServerPath+"nextcloud/security/end.php").get();
+
+                        ServiceIntent = new Intent(mContext, KeepAlive.class);
+                        ServiceIntent.putExtra("ACCOUNT_NAME",accountName);
+                        mContext.startService(ServiceIntent);
+
                         exitSelectionMode();
                         return true;
+
+
                     }
                     else
                     {
