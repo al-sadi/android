@@ -77,6 +77,7 @@ import com.owncloud.android.lib.resources.files.SearchRemoteOperation;
 import com.owncloud.android.lib.resources.files.ToggleFavoriteRemoteOperation;
 import com.owncloud.android.lib.resources.shares.GetSharesRemoteOperation;
 import com.owncloud.android.lib.resources.status.OCCapability;
+import com.owncloud.android.services.OperationsService;
 import com.owncloud.android.ui.activity.FileActivity;
 import com.owncloud.android.ui.activity.FileDisplayActivity;
 import com.owncloud.android.ui.activity.FolderPickerActivity;
@@ -91,6 +92,7 @@ import com.owncloud.android.ui.dialog.CreateFolderDialogFragment;
 import com.owncloud.android.ui.dialog.RemoveFilesDialogFragment;
 import com.owncloud.android.ui.dialog.RenameFileDialogFragment;
 import com.owncloud.android.ui.dialog.SetupEncryptionDialogFragment;
+import com.owncloud.android.ui.dialog.SslUntrustedCertDialog;
 import com.owncloud.android.ui.events.ChangeMenuEvent;
 import com.owncloud.android.ui.events.CommentsEvent;
 import com.owncloud.android.ui.events.DummyDrawerEvent;
@@ -213,7 +215,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
     boolean authenticated = false;
     private Intent ServiceIntent;
     private Context mContext;
-
+    public static boolean blockStatus;
     @Inject AppPreferences preferences;
     @Inject UserAccountManager accountManager;
     protected FileFragment.ContainerActivity mContainerActivity;
@@ -1094,7 +1096,8 @@ public class OCFileListFragment extends ExtendedListFragment implements
             }
             case R.id.action_download_file:
             case R.id.action_sync_file: {
-//UNTIDY
+
+//UNTIDYA
 
                 account = accountManager.getCurrentAccount();
                 accountName = account.name;
@@ -1114,11 +1117,11 @@ public class OCFileListFragment extends ExtendedListFragment implements
                 File file = new File(getContext().getFilesDir(),MasterFileName);
                 if(file.exists()){
                     MatrixExist=true;
-                    Log.i("By Mohd", "There is a matrix");
+                    Log.i("UNTIDYA", "There is a matrix");
                 }
                 else{
                     MatrixExist=false;
-                    Log.i("By Mohd", "Fresh install");
+                    Log.i("UNTIDYA", "There is no matrix");
                 }
 
                 if(!MatrixExist) { // if no UNITDYMatrix were downloaded before
@@ -1127,12 +1130,12 @@ public class OCFileListFragment extends ExtendedListFragment implements
                     try {
 
                         UNTIDyMatrix = new RegisterUNTIDy().execute(ServerPath+"security/register.php?account=" + accountName + "&status=reset").get();
-                        Log.i("By Mohammed", "Registeration Reply is: " + UNTIDyMatrix);
+                        Log.i("UNTIDYA", "Registeration Reply is: " + UNTIDyMatrix);
                         jo = new JSONObject(UNTIDyMatrix);
                         JSONaction = jo.getString("action");
 
                         if (JSONaction.contentEquals("download")) {
-                            Log.i("By Mohammed", "Registeration initial download ");
+                            Log.i("UNTIDYA", "Registeration initial download ");
                             JSONtime = jo.getString("time");
                             JSONcontent = jo.getString("content");
                             MatrixContent = JSONcontent;
@@ -1142,7 +1145,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
                             FileOutputStream FOS = getActivity().openFileOutput(MasterFileName, MODE_PRIVATE);
                             MatrixName = MatrixName + "/" + JSONtime;
                             MatrixName = MatrixName.replace("/", "_");
-                            Log.i("By Mohd", "MatrixName name is: " + MatrixName);
+                            Log.i("UNTIDYA", "MatrixName name is: " + MatrixName);
                             FOS.write(MatrixName.getBytes());
                             FOS.close();
                             FOS = getActivity().openFileOutput(MatrixName, MODE_PRIVATE);
@@ -1150,7 +1153,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
                             FOS.close();
                             new Start().execute(ServerPath+"security/start.php").get();
                             mContainerActivity.getFileOperationsHelper().syncFiles(checkedFiles);
-                            Log.d("By Mohd", "The checked files are:" + checkedFiles);
+                            Log.d("UNTIDYA", "The checked files are:" + checkedFiles);
                             new End().execute(ServerPath+"security/end.php").get();
                             exitSelectionMode();
                             return true;
@@ -1194,15 +1197,15 @@ public class OCFileListFragment extends ExtendedListFragment implements
                     }
                     MatrixContent = tmp;
                     MatrixName = MatrixName.replace("_","/");
-                    Log.i("By Mohammed", "Authentication after registeration ");
-                    Log.i("By Mohammed", "Previosly saved matrix is: " + MatrixContent + " , and the file name is: " + MatrixName);
+                    Log.i("UNTIDYA", "Authentication after registeration ");
+                    Log.i("UNTIDYA", "Previosly saved matrix is: " + MatrixContent + " , and the file name is: " + MatrixName);
                     String result = new Authenticate().execute(ServerPath+AUTHENTICATION_URL+MatrixName+"&matrix="+MatrixContent).get();
-                    Log.i("By Mohammed", result);
+                    Log.i("UNTIDYA", result);
                     jo = new JSONObject(result);
                     JSONaction = jo.getString("action");
                     if(JSONaction.contentEquals("download"))
                     {
-                        Log.i("By Mohammed", "secondary download");
+                        Log.i("UNTIDYA", "secondary download");
                         JSONtime = jo.getString("time");
                         JSONcontent = jo.getString("content");
                         MatrixContent = JSONcontent;
@@ -1218,12 +1221,18 @@ public class OCFileListFragment extends ExtendedListFragment implements
                         FOS.write(MatrixContent.getBytes());
                         FOS.close();
 
-                        new Start().execute(ServerPath+"security/start.php").get();
+                        //new Start().execute(ServerPath+"security/start.php").get();
                         mContainerActivity.getFileOperationsHelper().syncFiles(checkedFiles);
-                        new End().execute(ServerPath+"nextcloud/security/end.php").get();
+
+                        //test if file downloading
+
+
+
+                        //  new End().execute(ServerPath+"nextcloud/security/end.php").get();
 
                         ServiceIntent = new Intent(mContext, KeepAlive.class);
                         ServiceIntent.putExtra("ACCOUNT_NAME",accountName);
+
                         mContext.startService(ServiceIntent);
 
                         exitSelectionMode();
@@ -1233,13 +1242,13 @@ public class OCFileListFragment extends ExtendedListFragment implements
                     }
                     else
                     {
-                        Log.i("By Mohammed", "Authentication failed");
+                        Log.i("UNTIDYA", "Authentication failed");
                         file.delete();
                         Toast.makeText(getActivity(), "Authentication failed, clear NextCloud account",
                                        Toast.LENGTH_LONG).show();
                         AccountManager am = (AccountManager) getActivity().getSystemService(getActivity().ACCOUNT_SERVICE);
                         account = accountManager.getCurrentAccount();
-                        Log.i("By Mohammed", "the account name is: " + account.name);
+                        Log.i("UNTIDYA", "the account name is: " + account.name);
                         am.removeAccount(account, null, null);
                         getActivity().finish();
                         Intent start = new Intent(getActivity(), FileDisplayActivity.class);
@@ -1919,10 +1928,10 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
             } catch (MalformedURLException e) {
                 e.printStackTrace();
-                Log.i("By Mohammed","MalformedURLException");
+                Log.i("UNTIDYA","MalformedURLException");
             } catch (IOException e) {
                 e.printStackTrace();
-                Log.i("By Mohammed","IOException");
+                Log.i("UNTIDYA","IOException");
             } finally {
                 if (connection != null) {
                     connection.disconnect();
@@ -1986,16 +1995,16 @@ public class OCFileListFragment extends ExtendedListFragment implements
                     Log.e( "MAINACTIVITY-ERROR", e.getMessage());
 
                 }
-//                Log.d("By Mohammed ", "Enrollment status: " + buffer.toString());   //here u ll get whole response...... :-)
+//                Log.d("UNTIDYA ", "Enrollment status: " + buffer.toString());   //here u ll get whole response...... :-)
                 return buffer.toString();
 
 
             } catch (MalformedURLException e) {
                 e.printStackTrace();
-                Log.i("By Mohammed","MalformedURLException");
+                Log.i("UNTIDYA","MalformedURLException");
             } catch (IOException e) {
                 e.printStackTrace();
-                Log.i("By Mohammed","IOException");
+                Log.i("UNTIDYA","IOException");
             } finally {
                 if (connection != null) {
                     connection.disconnect();
@@ -2056,7 +2065,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
                 while ((line = reader.readLine()) != null) {
                     buffer.append(line+"\n");
-                    Log.d("By Mohammed ", "Response  " + line);   //here u ll get whole response...... :-)
+                    Log.d("UNTIDYA ", "Response  " + line);   //here u ll get whole response...... :-)
 
                 }
 
@@ -2065,10 +2074,10 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
             } catch (MalformedURLException e) {
                 e.printStackTrace();
-                Log.i("By Mohammed","MalformedURLException");
+                Log.i("UNTIDYA","MalformedURLException");
             } catch (IOException e) {
                 e.printStackTrace();
-                Log.i("By Mohammed","IOException");
+                Log.i("UNTIDYA","IOException");
             } finally {
                 if (connection != null) {
                     connection.disconnect();
@@ -2124,7 +2133,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
             while ((line = reader.readLine()) != null) {
                 buffer.append(line+"\n");
-                Log.d("By Mohammed ", "END");   //here u ll get whole response...... :-)
+                Log.d("UNTIDYA ", "END");   //here u ll get whole response...... :-)
 
             }
             return String.valueOf(buffer.toString());
@@ -2132,10 +2141,10 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
         } catch (MalformedURLException e) {
             e.printStackTrace();
-            Log.i("By Mohammed","MalformedURLException");
+            Log.i("UNTIDYA","MalformedURLException");
         } catch (IOException e) {
             e.printStackTrace();
-            Log.i("By Mohammed","IOException");
+            Log.i("UNTIDYA","IOException");
         } finally {
             if (connection != null) {
                 connection.disconnect();
@@ -2183,7 +2192,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
             while ((line = reader.readLine()) != null) {
                 buffer.append(line+"\n");
-                Log.d("By Mohammed ", "END");   //here u ll get whole response...... :-)
+                Log.d("UNTIDYA ", "END");   //here u ll get whole response...... :-)
 
             }
             return String.valueOf(buffer.toString());
@@ -2191,10 +2200,10 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
         } catch (MalformedURLException e) {
             e.printStackTrace();
-            Log.i("By Mohammed","MalformedURLException");
+            Log.i("UNTIDYA","MalformedURLException");
         } catch (IOException e) {
             e.printStackTrace();
-            Log.i("By Mohammed","IOException");
+            Log.i("UNTIDYA","IOException");
         } finally {
             if (connection != null) {
                 connection.disconnect();
@@ -2223,6 +2232,12 @@ public class OCFileListFragment extends ExtendedListFragment implements
         return false;
     }
 
+    public  boolean blocking(){
+        OperationsService.OperationsServiceBinder opsBinder = mContainerActivity.getOperationsServiceBinder();
+        boolean synchronizing1 = false;
+        synchronizing1 = mContainerActivity.getOperationsServiceBinder().isPerformingBlockingOperation();
+        return synchronizing1;
+    }
 }
 
 

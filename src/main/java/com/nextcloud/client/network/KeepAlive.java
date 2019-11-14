@@ -13,6 +13,9 @@ import android.util.Log;
 import android.widget.Toast;
 
 import com.nextcloud.client.account.UserAccountManager;
+import com.owncloud.android.services.OperationsService;
+import com.owncloud.android.ui.activity.ComponentsGetter;
+import com.owncloud.android.ui.activity.FileActivity;
 import com.owncloud.android.ui.activity.FileDisplayActivity;
 import com.owncloud.android.ui.fragment.OCFileListFragment;
 
@@ -31,6 +34,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Random;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.inject.Inject;
 
@@ -39,17 +43,17 @@ import androidx.annotation.Nullable;
 import static java.lang.Thread.sleep;
 
 
-public class KeepAlive extends Service {
+public class KeepAlive extends Service  {
 
-    public static final String KEY_ACCOUNT = "ACCOUNT"; // By Mohammed
-    private Account account; // By Mohammed
+    public static final String KEY_ACCOUNT = "ACCOUNT"; // UNTIDYS
+    private Account account; // UNTIDYS
 
     public static boolean GenerateUNTIDyMatrix = false;
     public static boolean RegisterUNTIDy = false;
     public static boolean Authenticate = false;
     public static boolean Start = false;
     public static boolean End = false;
-
+    private OperationsService.OperationsServiceBinder mOperationsServiceBinder;
 
     String UNTIDyMatrix = null;
     String AUTHENTICATION_URL = "security/authenticate.php?account=";
@@ -86,14 +90,17 @@ public class KeepAlive extends Service {
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
-        Log.d("MYSERVICE", "onBind: ");
+        Log.d("UNTIDYS", "onBind: ");
         return mBinder;
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+
+        mOperationsServiceBinder.isPerformingBlockingOperation();
+
         accountName = intent.getStringExtra("ACCOUNT_NAME");
-        Log.d("MYSERVICE", "onStartCommand: NAME RECEIVED!"+accountName + "thread id: " +Thread.currentThread().getId());
+        Log.d("UNTIDYS", "onStartCommand: NAME RECEIVED!"+accountName + "thread id: " +Thread.currentThread().getId());
         mIsRandomGeneratorOn=true;
         serviceStopSignal=false;
         new Thread(new Runnable() {
@@ -114,11 +121,14 @@ public class KeepAlive extends Service {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        Log.d("MYSERVICE", "onDestroy: Service Stopped");
+        Log.d("UNTIDYS", "onDestroy: Service Stopped");
     }
 
     private void startRandomNumberGenerator()
     {
+
+
+
         while(mIsRandomGeneratorOn)
         {
             try{
@@ -126,12 +136,12 @@ public class KeepAlive extends Service {
                 if(mIsRandomGeneratorOn && !serviceStopSignal)
                 {
                     mRandomNumber = new Random().nextInt(MAX)+MIN;
-                    Log.d("MYSERVICE", "startRandomNumberGenerator: Random number has been generated");
+                    Log.d("UNTIDYS", "startRandomNumberGenerator: Random number has been generated");
 
                     // START SERVICE
                     try {
                         sleep(1000);
-                        Log.d("MYSERVICE", "Started the service");
+                        Log.d("UNTIDYS", "Started the service");
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
@@ -147,62 +157,20 @@ public class KeepAlive extends Service {
                     ServerPath = accountName.substring(accountName.indexOf("@")+1);
                     ServerPath = ServerPath.concat("/");
                     ServerPath = "http://".concat(ServerPath);
-                    Log.d("MYSERVICE", "Server Path: "+ServerPath);
+                    Log.d("UNTIDYS", "Server Path: "+ServerPath);
                     File file = new File(mContext.getFilesDir(),MasterFileName);
                     if(file.exists()){
                         MatrixExist=true;
-                        Log.d("MYSERVICE", "There is a matrix");
+                        Log.d("UNTIDYS", "There is a matrix");
                     }
                     else{
                         MatrixExist=false;
-                        Log.d("MYSERVICE", "Fresh install");
+                        Log.d("UNTIDYS", "Fresh install");
                     }
 
                     if(!MatrixExist) { // if no UNITDYMatrix were downloaded before
-
-
-                        try {
-                            Log.d("MYSERVICE", "Account name is: " + accountName);
-                            UNTIDyMatrix = new RegisterUNTIDy().execute(ServerPath+"security/register.php?account=" + accountName + "&status=reset").get();
-                            Log.d("MYSERVICE", "Registeration Reply is: " + UNTIDyMatrix);
-                            jo = new JSONObject(UNTIDyMatrix);
-                            JSONaction = jo.getString("action");
-                            System.out.println("Evaluation" + JSONaction.contentEquals("download"));
-
-                            if (JSONaction.contentEquals("download")) {
-                                Log.d("MYSERVICE", "Registeration initial download ");
-                                JSONtime = jo.getString("time");
-                                JSONcontent = jo.getString("content");
-                                MatrixContent = JSONcontent;
-                                MatrixName = accountName.replace("@", "/");
-                                MasterFileName = MatrixName;
-                                MasterFileName = MasterFileName.replace("/", "_");
-                                Log.d("MYSERVICE", "MasterFileName name is: " + MasterFileName);
-                                FileOutputStream FOS = new FileOutputStream(MasterFileName);
-                                MatrixName = MatrixName + "/" + JSONtime;
-                                MatrixName = MatrixName.replace("/", "_");
-                                Log.d("MYSERVICE", "MatrixName name is: " + MatrixName);
-                                FOS.write(MatrixName.getBytes());
-                                FOS.close();
-                                FOS = openFileOutput(MatrixName, MODE_PRIVATE);
-                                FOS.write(MatrixContent.getBytes());
-                                FOS.close();
-
-                                //exitSelectionMode();
-                                //return true;
-
-                            }
-
-                        } catch (ExecutionException e) {
-                            e.printStackTrace();
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        } catch (JSONException e) {
-                            e.printStackTrace();
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-
+                        Log.d("UNTIDYS", "NO MATRIX; The service should not trigger registration");
+                        stopRandomNumberGenerator();
                     }
                     else
                     {
@@ -230,15 +198,15 @@ public class KeepAlive extends Service {
                             }
                             MatrixContent = tmp;
                             MatrixName = MatrixName.replace("_","/");
-                            Log.d("MYSERVICE", "Authentication after registeration ");
-                            Log.d("MYSERVICE", "Previosly saved matrix is: " + MatrixContent + " , and the file name is: " + MatrixName);
+                            Log.d("UNTIDYS", "Authentication after registeration ");
+                            Log.d("UNTIDYS", "Previosly saved matrix is: " + MatrixContent + " , and the file name is: " + MatrixName);
                             String result = new Authenticate().execute(ServerPath+AUTHENTICATION_URL+MatrixName+"&matrix="+MatrixContent).get();
-                            Log.d("MYSERVICE", result);
+                            Log.d("UNTIDYS", result);
                             jo = new JSONObject(result);
                             JSONaction = jo.getString("action");
                             if(JSONaction.contentEquals("download"))
                             {
-                                Log.i("MYSERVICE", "secondary download");
+                                Log.i("UNTIDYS", "secondary download");
                                 JSONtime = jo.getString("time");
                                 JSONcontent = jo.getString("content");
                                 MatrixContent = JSONcontent;
@@ -254,27 +222,27 @@ public class KeepAlive extends Service {
                                 FOS.write(MatrixContent.getBytes());
                                 FOS.close();
 
-                                new Start().execute(ServerPath+"security/start.php").get();
+                                //new Start().execute(ServerPath+"security/start.php").get();
 
-                                new End().execute(ServerPath+"nextcloud/security/end.php").get();
+                                //new End().execute(ServerPath+"nextcloud/security/end.php").get();
                                 //exitSelectionMode();
                                 //return true;
                             }
                             else
                             {
-                                Log.i("MYSERVICE", "Authentication failed");
+                                Log.i("UNTIDYS", "Authentication failed");
                                 file.delete();
                                 Toast.makeText(mContext, "Authentication failed, clear NextCloud account",
                                                Toast.LENGTH_LONG).show();
                                 AccountManager am = (AccountManager) mContext.getSystemService(mContext.ACCOUNT_SERVICE);
                                 account = accountManager.getCurrentAccount();
-                                Log.d("MYSERVICE", "the account name is: " + account.name);
+                                Log.d("UNTIDYS", "the account name is: " + account.name);
                                 am.removeAccount(account, null, null);
 
                                 Intent start = new Intent(mContext, FileDisplayActivity.class);
                                 start.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
                                 startActivity(start);
-                                Log.d("MYSERVICE", "Ended the service");
+                                Log.d("UNTIDYS", "Ended the service");
                                 //delete the matricies then
                                 //instruct the server to delete the mastricies or move them
                                 //   return true;
@@ -297,27 +265,27 @@ public class KeepAlive extends Service {
             }
             catch (InterruptedException e)
             {
-                Log.d("MYSERVICE", "startRandomNumberGenerator: Catch Clause ");
+                Log.d("UNTIDYS", "startRandomNumberGenerator: Catch Clause ");
             }
         }
     }
 
     private void stopRandomNumberGenerator() throws InterruptedException {
         serviceStopSignal=true;
-        Log.d("MYSERVICE", "stopRandomNumberGenerator: Stop Signal has been triggered ");
+        Log.d("UNTIDYS", "stopRandomNumberGenerator: Stop Signal has been triggered ");
         while (GenerateUNTIDyMatrix || RegisterUNTIDy || Authenticate || Start || End)
          {
-             Log.d("MYSERVICE", "Can't stop; One of the Async tasks is still working");
+             Log.d("UNTIDYS", "Can't stop; One of the Async tasks is still working");
              if(GenerateUNTIDyMatrix)
-                 Log.d("MYSERVICE", "Can't stop; One of the Async GenerateUNTIDyMatrix is still working");
+                 Log.d("UNTIDYS", "Can't stop; One of the Async GenerateUNTIDyMatrix is still working");
              if(RegisterUNTIDy)
-                 Log.d("MYSERVICE", "Can't stop; One of the Async RegisterUNTIDy is still working");
+                 Log.d("UNTIDYS", "Can't stop; One of the Async RegisterUNTIDy is still working");
              if(Authenticate)
-                 Log.d("MYSERVICE", "Can't stop; One of the Async Authenticate is still working");
+                 Log.d("UNTIDYS", "Can't stop; One of the Async Authenticate is still working");
              if(Start)
-                 Log.d("MYSERVICE", "Can't stop; One of the Async Start is still working");
+                 Log.d("UNTIDYS", "Can't stop; One of the Async Start is still working");
              if(End)
-                 Log.d("MYSERVICE", "Can't stop; One of the Async End is still working");
+                 Log.d("UNTIDYS", "Can't stop; One of the Async End is still working");
 
 
              sleep(1000);
@@ -329,140 +297,150 @@ public class KeepAlive extends Service {
         return mRandomNumber;
     }
 
-    private class GenerateUNTIDyMatrix extends AsyncTask<String,String,String> {
-
-        protected void onPreExecute() {
-            GenerateUNTIDyMatrix = true;
-            super.onPreExecute();
-
-        }
-
-        protected String doInBackground(String... params) {
-
-
-            HttpURLConnection connection = null;
-
-            int code;
-
-            try {
-                URL url = new URL(params[0]);
-                connection = (HttpURLConnection) url.openConnection();
-                connection.connect();
-
-                code = connection.getResponseCode();
-
-
-                return String.valueOf(code);
-
-
-            } catch (MalformedURLException e) {
-                e.printStackTrace();
-                Log.i("MYSERVICE","MalformedURLException");
-            } catch (IOException e) {
-                e.printStackTrace();
-                Log.i("MYSERVICE","IOException");
-            } finally {
-                if (connection != null) {
-                    connection.disconnect();
-                }
-
-            }
-            return null;
-        }
-
-        @Override
-        protected void onPostExecute(String result) {
-            GenerateUNTIDyMatrix=false;
-            super.onPostExecute(result);
-
-
-        }
-    }
-    private class RegisterUNTIDy extends AsyncTask<String,String,String> {
-
-        protected void onPreExecute() {
-            RegisterUNTIDy = true;
-            super.onPreExecute();
-
-        }
-
-        protected String doInBackground(String... params) {
-
-
-            HttpURLConnection connection = null;
-            BufferedReader reader = null;
-
-            try {
-
-                URL url = new URL(params[0]);
-                connection = (HttpURLConnection) url.openConnection();
-                connection.connect();
-
-                InputStream stream = connection.getInputStream();
-
-                reader = new BufferedReader(new InputStreamReader(stream));
-
-                StringBuffer buffer = new StringBuffer();
-                String line = "";
-
-                while ((line = reader.readLine()) != null) {
-                    buffer.append(line+"\n");
-
-
-                }
-
-                try
-                {
-                    sleep( 2 * 1000 );
-                }
-                catch ( InterruptedException e )
-                {
-                    Log.e( "MAINACTIVITY-ERROR", e.getMessage());
-
-                }
-//                Log.d("By Mohammed ", "Enrollment status: " + buffer.toString());   //here u ll get whole response...... :-)
-                return buffer.toString();
-
-
-            } catch (MalformedURLException e) {
-                e.printStackTrace();
-                Log.d("MYSERVICE","MalformedURLException");
-            } catch (IOException e) {
-                e.printStackTrace();
-                Log.d("MYSERVICE","IOException");
-            } finally {
-                if (connection != null) {
-                    connection.disconnect();
-                }
-                try {
-                    if (reader != null) {
-                        reader.close();
-                    }
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-            return null;
-        }
-
-        @Override
-        protected void onPostExecute(String result) {
-            RegisterUNTIDy=false;
-            super.onPostExecute(result);
-
-
-
-
-
-        }
-
-
-    }
+//    private class GenerateUNTIDyMatrix extends AsyncTask<String,String,String> {
+//
+//        protected void onPreExecute() {
+//            GenerateUNTIDyMatrix = true;
+//            super.onPreExecute();
+//
+//        }
+//
+//        protected String doInBackground(String... params) {
+//
+//
+//            HttpURLConnection connection = null;
+//
+//            int code;
+//
+//            try {
+//                URL url = new URL(params[0]);
+//                connection = (HttpURLConnection) url.openConnection();
+//                connection.connect();
+//
+//                code = connection.getResponseCode();
+//
+//
+//                return String.valueOf(code);
+//
+//
+//            } catch (MalformedURLException e) {
+//                e.printStackTrace();
+//                Log.i("UNTIDYS","MalformedURLException");
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//                Log.i("UNTIDYS","IOException");
+//            } finally {
+//                if (connection != null) {
+//                    connection.disconnect();
+//                }
+//
+//            }
+//            return null;
+//        }
+//
+//        @Override
+//        protected void onPostExecute(String result) {
+//            GenerateUNTIDyMatrix=false;
+//            super.onPostExecute(result);
+//
+//
+//        }
+//    }
+//    private class RegisterUNTIDy extends AsyncTask<String,String,String> {
+//
+//        protected void onPreExecute() {
+//            RegisterUNTIDy = true;
+//            super.onPreExecute();
+//
+//        }
+//
+//        protected String doInBackground(String... params) {
+//
+//
+//            HttpURLConnection connection = null;
+//            BufferedReader reader = null;
+//
+//            try {
+//
+//                URL url = new URL(params[0]);
+//                connection = (HttpURLConnection) url.openConnection();
+//                connection.connect();
+//
+//                InputStream stream = connection.getInputStream();
+//
+//                reader = new BufferedReader(new InputStreamReader(stream));
+//
+//                StringBuffer buffer = new StringBuffer();
+//                String line = "";
+//
+//                while ((line = reader.readLine()) != null) {
+//                    buffer.append(line+"\n");
+//
+//
+//                }
+//
+//                try
+//                {
+//                    sleep( 2 * 1000 );
+//                }
+//                catch ( InterruptedException e )
+//                {
+//                    Log.e( "MAINACTIVITY-ERROR", e.getMessage());
+//
+//                }
+////                Log.d("UNTIDYS ", "Enrollment status: " + buffer.toString());   //here u ll get whole response...... :-)
+//                return buffer.toString();
+//
+//
+//            } catch (MalformedURLException e) {
+//                e.printStackTrace();
+//                Log.d("UNTIDYS","MalformedURLException");
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//                Log.d("UNTIDYS","IOException");
+//            } finally {
+//                if (connection != null) {
+//                    connection.disconnect();
+//                }
+//                try {
+//                    if (reader != null) {
+//                        reader.close();
+//                    }
+//                } catch (IOException e) {
+//                    e.printStackTrace();
+//                }
+//            }
+//            return null;
+//        }
+//
+//        @Override
+//        protected void onPostExecute(String result) {
+//            RegisterUNTIDy=false;
+//            super.onPostExecute(result);
+//
+//
+//
+//
+//
+//        }
+//
+//
+//    }
     private class Authenticate extends AsyncTask<String,String,String> {
 
         protected void onPreExecute() {
-            Authenticate=true;
-            super.onPreExecute();
+            if(Authenticate == true)
+            {
+                try {
+                    sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+            else {
+                Authenticate = true;
+                super.onPreExecute();
+            }
 
 
         }
@@ -487,7 +465,7 @@ public class KeepAlive extends Service {
 
                 while ((line = reader.readLine()) != null) {
                     buffer.append(line+"\n");
-                    Log.d("By Mohammed ", "Response  " + line);   //here u ll get whole response...... :-)
+                    Log.d("UNTIDYS ", "Response  " + line);   //here u ll get whole response...... :-)
 
                 }
 
@@ -496,10 +474,10 @@ public class KeepAlive extends Service {
 
             } catch (MalformedURLException e) {
                 e.printStackTrace();
-                Log.i("By Mohammed","MalformedURLException");
+                Log.i("UNTIDYS","MalformedURLException");
             } catch (IOException e) {
                 e.printStackTrace();
-                Log.i("By Mohammed","IOException");
+                Log.i("UNTIDYS","IOException");
             } finally {
                 if (connection != null) {
                     connection.disconnect();
@@ -528,128 +506,128 @@ public class KeepAlive extends Service {
     // private class GenerateUNTIDyMatrix extends AsyncTask<String,String,String>
 // private class GetUNTIDyMatrix extends AsyncTask<String,String,String>
 // private class Authenticate extends AsyncTask<String,String,String>
-    private class Start extends AsyncTask<String,String,String> {
-
-        protected void onPreExecute() {
-            Start=true;
-            super.onPreExecute();
-        }
-
-        protected String doInBackground(String... params) {
-
-
-            HttpURLConnection connection = null;
-            BufferedReader reader = null;
-            try {
-
-                URL url = new URL(params[0]);
-                connection = (HttpURLConnection) url.openConnection();
-                connection.connect();
-
-                InputStream stream = connection.getInputStream();
-
-                reader = new BufferedReader(new InputStreamReader(stream));
-
-                StringBuffer buffer = new StringBuffer();
-                String line = "";
-
-                while ((line = reader.readLine()) != null) {
-                    buffer.append(line+"\n");
-                    Log.d("By Mohammed ", "END");   //here u ll get whole response...... :-)
-
-                }
-                return String.valueOf(buffer.toString());
-
-
-            } catch (MalformedURLException e) {
-                e.printStackTrace();
-                Log.i("By Mohammed","MalformedURLException");
-            } catch (IOException e) {
-                e.printStackTrace();
-                Log.i("By Mohammed","IOException");
-            } finally {
-                if (connection != null) {
-                    connection.disconnect();
-                }
-                try {
-                    if (reader != null) {
-                        reader.close();
-                    }
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-            return null;
-        }
-
-        @Override
-        protected void onPostExecute(String result) {
-            Start=false;
-            super.onPostExecute(result);
-
-        }
-    }
-    private class End extends AsyncTask<String,String,String> {
-
-        protected void onPreExecute() {
-            End=true;
-            super.onPreExecute();
-        }
-
-        protected String doInBackground(String... params) {
-
-
-            HttpURLConnection connection = null;
-            BufferedReader reader = null;
-            try {
-
-                URL url = new URL(params[0]);
-                connection = (HttpURLConnection) url.openConnection();
-                connection.connect();
-
-                InputStream stream = connection.getInputStream();
-
-                reader = new BufferedReader(new InputStreamReader(stream));
-
-                StringBuffer buffer = new StringBuffer();
-                String line = "";
-
-                while ((line = reader.readLine()) != null) {
-                    buffer.append(line+"\n");
-                    Log.d("By Mohammed ", "END");   //here u ll get whole response...... :-)
-
-                }
-                return String.valueOf(buffer.toString());
-
-
-            } catch (MalformedURLException e) {
-                e.printStackTrace();
-                Log.i("By Mohammed","MalformedURLException");
-            } catch (IOException e) {
-                e.printStackTrace();
-                Log.i("By Mohammed","IOException");
-            } finally {
-                if (connection != null) {
-                    connection.disconnect();
-                }
-                try {
-                    if (reader != null) {
-                        reader.close();
-                    }
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-            return null;
-        }
-
-        @Override
-        protected void onPostExecute(String result) {
-            End=false;
-            super.onPostExecute(result);
-
-        }
-    }
+//    private class Start extends AsyncTask<String,String,String> {
+//
+//        protected void onPreExecute() {
+//            Start=true;
+//            super.onPreExecute();
+//        }
+//
+//        protected String doInBackground(String... params) {
+//
+//
+//            HttpURLConnection connection = null;
+//            BufferedReader reader = null;
+//            try {
+//
+//                URL url = new URL(params[0]);
+//                connection = (HttpURLConnection) url.openConnection();
+//                connection.connect();
+//
+//                InputStream stream = connection.getInputStream();
+//
+//                reader = new BufferedReader(new InputStreamReader(stream));
+//
+//                StringBuffer buffer = new StringBuffer();
+//                String line = "";
+//
+//                while ((line = reader.readLine()) != null) {
+//                    buffer.append(line+"\n");
+//                    Log.d("UNTIDYS ", "END");   //here u ll get whole response...... :-)
+//
+//                }
+//                return String.valueOf(buffer.toString());
+//
+//
+//            } catch (MalformedURLException e) {
+//                e.printStackTrace();
+//                Log.i("UNTIDYS","MalformedURLException");
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//                Log.i("UNTIDYS","IOException");
+//            } finally {
+//                if (connection != null) {
+//                    connection.disconnect();
+//                }
+//                try {
+//                    if (reader != null) {
+//                        reader.close();
+//                    }
+//                } catch (IOException e) {
+//                    e.printStackTrace();
+//                }
+//            }
+//            return null;
+//        }
+//
+//        @Override
+//        protected void onPostExecute(String result) {
+//            Start=false;
+//            super.onPostExecute(result);
+//
+//        }
+//    }
+//    private class End extends AsyncTask<String,String,String> {
+//
+//        protected void onPreExecute() {
+//            End=true;
+//            super.onPreExecute();
+//        }
+//
+//        protected String doInBackground(String... params) {
+//
+//
+//            HttpURLConnection connection = null;
+//            BufferedReader reader = null;
+//            try {
+//
+//                URL url = new URL(params[0]);
+//                connection = (HttpURLConnection) url.openConnection();
+//                connection.connect();
+//
+//                InputStream stream = connection.getInputStream();
+//
+//                reader = new BufferedReader(new InputStreamReader(stream));
+//
+//                StringBuffer buffer = new StringBuffer();
+//                String line = "";
+//
+//                while ((line = reader.readLine()) != null) {
+//                    buffer.append(line+"\n");
+//                    Log.d("UNTIDYS ", "END");   //here u ll get whole response...... :-)
+//
+//                }
+//                return String.valueOf(buffer.toString());
+//
+//
+//            } catch (MalformedURLException e) {
+//                e.printStackTrace();
+//                Log.i("UNTIDYS","MalformedURLException");
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//                Log.i("UNTIDYS","IOException");
+//            } finally {
+//                if (connection != null) {
+//                    connection.disconnect();
+//                }
+//                try {
+//                    if (reader != null) {
+//                        reader.close();
+//                    }
+//                } catch (IOException e) {
+//                    e.printStackTrace();
+//                }
+//            }
+//            return null;
+//        }
+//
+//        @Override
+//        protected void onPostExecute(String result) {
+//            End=false;
+//            super.onPostExecute(result);
+//
+//        }
+//    }
 }
 
 
