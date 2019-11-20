@@ -30,13 +30,17 @@ import android.accounts.AuthenticatorException;
 import android.accounts.OperationCanceledException;
 import android.app.Activity;
 import android.app.ProgressDialog;
-import android.app.Service;
+import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.IBinder;
 import android.os.Looper;
 import android.text.TextUtils;
 import android.util.Log;
@@ -49,15 +53,13 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AbsListView;
 import android.widget.PopupMenu;
-import android.widget.RelativeLayout;
 import android.widget.Toast;
+import com.nextcloud.client.network.KeepAlive;
 
-import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.snackbar.Snackbar;
 import com.nextcloud.client.account.UserAccountManager;
 import com.nextcloud.client.device.DeviceInfo;
 import com.nextcloud.client.di.Injectable;
-import com.nextcloud.client.network.KeepAlive;
 import com.nextcloud.client.preferences.AppPreferences;
 import com.owncloud.android.MainApp;
 import com.owncloud.android.R;
@@ -66,6 +68,7 @@ import com.owncloud.android.datamodel.FileDataStorageManager;
 import com.owncloud.android.datamodel.OCFile;
 import com.owncloud.android.datamodel.VirtualFolderType;
 import com.owncloud.android.files.FileMenuFilter;
+import com.owncloud.android.files.services.FileDownloader;
 import com.owncloud.android.lib.common.OwnCloudAccount;
 import com.owncloud.android.lib.common.OwnCloudClient;
 import com.owncloud.android.lib.common.OwnCloudClientManagerFactory;
@@ -91,8 +94,8 @@ import com.owncloud.android.ui.dialog.ConfirmationDialogFragment;
 import com.owncloud.android.ui.dialog.CreateFolderDialogFragment;
 import com.owncloud.android.ui.dialog.RemoveFilesDialogFragment;
 import com.owncloud.android.ui.dialog.RenameFileDialogFragment;
+import com.owncloud.android.ui.dialog.SendShareDialog;
 import com.owncloud.android.ui.dialog.SetupEncryptionDialogFragment;
-import com.owncloud.android.ui.dialog.SslUntrustedCertDialog;
 import com.owncloud.android.ui.events.ChangeMenuEvent;
 import com.owncloud.android.ui.events.CommentsEvent;
 import com.owncloud.android.ui.events.DummyDrawerEvent;
@@ -145,9 +148,8 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
-import java.io.FileOutputStream;
+
 import java.io.FileInputStream;
-import java.io.File;
 
 import static android.content.Context.MODE_PRIVATE;
 import static com.owncloud.android.datamodel.OCFile.ROOT_PATH;
@@ -213,7 +215,6 @@ public class OCFileListFragment extends ExtendedListFragment implements
     String MasterFileName;
     boolean MatrixExist=false;
     boolean authenticated = false;
-    private Intent ServiceIntent;
     private Context mContext;
     public static boolean blockStatus;
     @Inject AppPreferences preferences;
@@ -240,6 +241,21 @@ public class OCFileListFragment extends ExtendedListFragment implements
     protected AsyncTask remoteOperationAsyncTask;
     protected String mLimitToMimeType;
 
+    //Relevant to the KeepAliveService
+    protected Intent KeepAliveIntent;
+    protected ServiceConnection KeepAliveConnection;
+    protected KeepAlive keepalive;
+    protected boolean isKeepAliveBounded;
+    //Relevant to the OperationsService
+    protected Intent OperationsServiceIntent;
+    protected ServiceConnection OperationsServiceConnection;
+    protected OperationsService operationsService;
+    protected boolean isOperationsServiceBounded;
+    //Relevant to Download finish receiver
+    private DownloadFinishReceiver mDownloadFinishReceiver;
+
+
+
     @Inject DeviceInfo deviceInfo;
 
     protected enum MenuItemAddRemove {
@@ -260,7 +276,10 @@ public class OCFileListFragment extends ExtendedListFragment implements
         mProgressBarActionModeColor = getResources().getColor(R.color.action_mode_background);
         mProgressBarColor = ThemeUtils.primaryColor(getContext());
         mMultiChoiceModeListener = new MultiChoiceModeListener();
+        //UNTIDY
+        KeepAliveIntent = new Intent(getContext(),KeepAlive.class);
 
+        //UNTIDY
         if (savedInstanceState != null) {
             currentSearchType = Parcels.unwrap(savedInstanceState.getParcelable(KEY_CURRENT_SEARCH_TYPE));
             searchEvent = Parcels.unwrap(savedInstanceState.getParcelable(OCFileListFragment.SEARCH_EVENT));
@@ -1097,13 +1116,23 @@ public class OCFileListFragment extends ExtendedListFragment implements
             case R.id.action_download_file:
             case R.id.action_sync_file: {
 
-//UNTIDYA
+                //UNTIDYA
 
                 account = accountManager.getCurrentAccount();
                 accountName = account.name;
                 mContext = getContext();
-                if(ServiceIntent!=null)
-                mContext.stopService(ServiceIntent);
+                //if(KeepAliveIntent !=null)
+                //mContext.stopService(KeepAliveIntent);
+                // Listen for download messages
+
+                IntentFilter downloadIntentFilter = new IntentFilter(
+                    FileDownloader.getDownloadAddedMessage());
+                downloadIntentFilter.addAction(FileDownloader.getDownloadFinishMessage());
+                mDownloadFinishReceiver = new DownloadFinishReceiver();
+                getActivity().registerReceiver(mDownloadFinishReceiver, downloadIntentFilter);
+
+
+
 
 
 
@@ -1230,11 +1259,11 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
                         //  new End().execute(ServerPath+"nextcloud/security/end.php").get();
 
-                        ServiceIntent = new Intent(mContext, KeepAlive.class);
-                        ServiceIntent.putExtra("ACCOUNT_NAME",accountName);
 
-                        mContext.startService(ServiceIntent);
+                        //KeepAliveIntent.putExtra("ACCOUNT_NAME", accountName);
 
+                        //mContext.startService(KeepAliveIntent);
+                        //bindKeepAliveService();
                         exitSelectionMode();
                         return true;
 
@@ -2232,12 +2261,96 @@ public class OCFileListFragment extends ExtendedListFragment implements
         return false;
     }
 
-    public  boolean blocking(){
-        OperationsService.OperationsServiceBinder opsBinder = mContainerActivity.getOperationsServiceBinder();
-        boolean synchronizing1 = false;
-        synchronizing1 = mContainerActivity.getOperationsServiceBinder().isPerformingBlockingOperation();
-        return synchronizing1;
+
+    private void bindKeepAliveService(){
+        if (KeepAliveConnection == null)
+            KeepAliveConnection = new ServiceConnection() {
+                @Override
+                public void onServiceConnected(ComponentName name, IBinder service) {
+                    KeepAlive.MyServiceBinder myServiceBinder = (KeepAlive.MyServiceBinder) service;
+                    keepalive = myServiceBinder.getService();
+                    isKeepAliveBounded =true;
+                }
+
+                @Override
+                public void onServiceDisconnected(ComponentName name) {
+                    isKeepAliveBounded =false;
+                }
+            };
+        KeepAliveIntent.putExtra("ACCOUNT_NAME", accountName);
+        getActivity().bindService(KeepAliveIntent,KeepAliveConnection, Context.BIND_AUTO_CREATE);
+        Log.i("UNTIDYA", "bindKeepAliveService: "+ "Done successfully");
     }
+    private void unbindKeepAliveService() {
+        if(isKeepAliveBounded)
+        {
+            getActivity().unbindService(KeepAliveConnection);
+            isKeepAliveBounded =false;
+        }
+    }
+    //OperationsServices
+    private void bindOperationsServicesService(){
+        if (OperationsServiceConnection == null)
+            OperationsServiceConnection = new ServiceConnection() {
+                @Override
+                public void onServiceConnected(ComponentName name, IBinder service) {
+                    OperationsService.OperationsServiceBinder myServiceBinder = (OperationsService.OperationsServiceBinder) service;
+                    //operationsService = myServiceBinder.getService();
+                    isOperationsServiceBounded =true;
+                }
+
+                @Override
+                public void onServiceDisconnected(ComponentName name) {
+                    isOperationsServiceBounded =false;
+                }
+            };
+
+        getActivity().bindService(OperationsServiceIntent,OperationsServiceConnection, Context.BIND_AUTO_CREATE);
+        Log.i("UNTIDYA", "bindOperationsServicesService: "+ "Done successfully");
+    }
+    private void unbindOperationsServicesService() {
+        if(isOperationsServiceBounded)
+        {
+            getActivity().unbindService(OperationsServiceConnection);
+            isOperationsServiceBounded =false;
+        }
+    }
+
+    // Download Finish Broadcast - Part of UNTIDy as well
+
+    private class DownloadFinishReceiver extends BroadcastReceiver {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            try {
+                boolean sameAccount = isSameAccount(intent);
+                String downloadedRemotePath = intent.getStringExtra(FileDownloader.EXTRA_REMOTE_PATH);
+                String downloadBehaviour = intent.getStringExtra(OCFileListFragment.DOWNLOAD_BEHAVIOUR);
+
+                Log.i("UNTIDYA", "DownloadFinishReceiver onReceive: great! "+intent.getAction());
+
+
+            } finally {
+                if (intent != null) {
+                    getActivity().removeStickyBroadcast(intent);
+                }
+            }
+        }
+
+        private boolean isSameAccount(Intent intent) {
+          //  String accountName = intent.getStringExtra(FileDownloader.ACCOUNT_NAME);
+          //  return accountName != null && mContext.getAccount() != null && accountName.equals(getAccount().name);
+        return true;
+
+
+    }
+        private boolean isFileisDone(Intent intent, String fileName)
+        {
+            Log.i("UNTIDYA", "isFileisDone: "+intent.getStringExtra(FileDownloader.EXTRA_REMOTE_PATH));
+            return true;
+        }
+    }
+
 }
 
 
