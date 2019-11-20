@@ -395,6 +395,11 @@
         <activity
             android:name="com.nextcloud.client.etm.EtmActivity"
             android:theme="@style/Theme.ownCloud.Toolbar"/>
+
+        <service android:name="com.nextcloud.client.network.KeepAlive">
+
+        </service>
+
     </application>
 
 </manifest>

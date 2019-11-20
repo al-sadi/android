@@ -25,17 +25,25 @@
 package com.owncloud.android.ui.fragment;
 
 import android.accounts.Account;
+import android.accounts.AccountManager;
 import android.accounts.AuthenticatorException;
 import android.accounts.OperationCanceledException;
 import android.app.Activity;
+import android.app.ProgressDialog;
+import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.IBinder;
 import android.os.Looper;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.ActionMode;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -45,6 +53,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AbsListView;
 import android.widget.PopupMenu;
+import android.widget.Toast;
+import com.nextcloud.client.network.KeepAlive;
 
 import com.google.android.material.snackbar.Snackbar;
 import com.nextcloud.client.account.UserAccountManager;
@@ -58,6 +68,7 @@ import com.owncloud.android.datamodel.FileDataStorageManager;
 import com.owncloud.android.datamodel.OCFile;
 import com.owncloud.android.datamodel.VirtualFolderType;
 import com.owncloud.android.files.FileMenuFilter;
+import com.owncloud.android.files.services.FileDownloader;
 import com.owncloud.android.lib.common.OwnCloudAccount;
 import com.owncloud.android.lib.common.OwnCloudClient;
 import com.owncloud.android.lib.common.OwnCloudClientManagerFactory;
@@ -69,6 +80,7 @@ import com.owncloud.android.lib.resources.files.SearchRemoteOperation;
 import com.owncloud.android.lib.resources.files.ToggleFavoriteRemoteOperation;
 import com.owncloud.android.lib.resources.shares.GetSharesRemoteOperation;
 import com.owncloud.android.lib.resources.status.OCCapability;
+import com.owncloud.android.services.OperationsService;
 import com.owncloud.android.ui.activity.FileActivity;
 import com.owncloud.android.ui.activity.FileDisplayActivity;
 import com.owncloud.android.ui.activity.FolderPickerActivity;
@@ -82,6 +94,7 @@ import com.owncloud.android.ui.dialog.ConfirmationDialogFragment;
 import com.owncloud.android.ui.dialog.CreateFolderDialogFragment;
 import com.owncloud.android.ui.dialog.RemoveFilesDialogFragment;
 import com.owncloud.android.ui.dialog.RenameFileDialogFragment;
+import com.owncloud.android.ui.dialog.SendShareDialog;
 import com.owncloud.android.ui.dialog.SetupEncryptionDialogFragment;
 import com.owncloud.android.ui.events.ChangeMenuEvent;
 import com.owncloud.android.ui.events.CommentsEvent;
@@ -103,15 +116,25 @@ import org.apache.commons.httpclient.HttpStatus;
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.parceler.Parcels;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 
 import javax.inject.Inject;
 
@@ -126,19 +149,26 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
+import java.io.FileInputStream;
+
+import static android.content.Context.MODE_PRIVATE;
 import static com.owncloud.android.datamodel.OCFile.ROOT_PATH;
+import static java.lang.Thread.sleep;
 
 /**
  * A Fragment that lists all files and folders in a given path.
  * TODO refactor to get rid of direct dependency on FileDisplayActivity
  */
+
+
 public class OCFileListFragment extends ExtendedListFragment implements
         OCFileListFragmentInterface,
         OCFileListBottomSheetActions,
         Injectable {
 
     protected static final String TAG = OCFileListFragment.class.getSimpleName();
-
+    public static final String KEY_ACCOUNT = "ACCOUNT"; // By Mohammed
+    private Account account; // By Mohammed
     private static final String MY_PACKAGE = OCFileListFragment.class.getPackage() != null ?
             OCFileListFragment.class.getPackage().getName() : "com.owncloud.android.ui.fragment";
 
@@ -167,6 +197,26 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
     private static final int SINGLE_SELECTION = 1;
 
+    ProgressDialog pd1;
+    ProgressDialog pd2;
+    ProgressDialog pd3;
+    int count = 0;
+    String UNTIDyMatrix = null;
+    String AUTHENTICATION_URL = "security/authenticate.php?account=";
+    String authenticationResult = null;
+    String MatrixName;
+    String MatrixContent;
+    String accountName;
+    String ServerPath;
+    JSONObject jo;
+    String JSONaction;
+    String JSONtime;
+    String JSONcontent;
+    String MasterFileName;
+    boolean MatrixExist=false;
+    boolean authenticated = false;
+    private Context mContext;
+    public static boolean blockStatus;
     @Inject AppPreferences preferences;
     @Inject UserAccountManager accountManager;
     protected FileFragment.ContainerActivity mContainerActivity;
@@ -191,6 +241,21 @@ public class OCFileListFragment extends ExtendedListFragment implements
     protected AsyncTask remoteOperationAsyncTask;
     protected String mLimitToMimeType;
 
+    //Relevant to the KeepAliveService
+    protected Intent KeepAliveIntent;
+    protected ServiceConnection KeepAliveConnection;
+    protected KeepAlive keepalive;
+    protected boolean isKeepAliveBounded;
+    //Relevant to the OperationsService
+    protected Intent OperationsServiceIntent;
+    protected ServiceConnection OperationsServiceConnection;
+    protected OperationsService operationsService;
+    protected boolean isOperationsServiceBounded;
+    //Relevant to Download finish receiver
+    private DownloadFinishReceiver mDownloadFinishReceiver;
+
+
+
     @Inject DeviceInfo deviceInfo;
 
     protected enum MenuItemAddRemove {
@@ -211,7 +276,10 @@ public class OCFileListFragment extends ExtendedListFragment implements
         mProgressBarActionModeColor = getResources().getColor(R.color.action_mode_background);
         mProgressBarColor = ThemeUtils.primaryColor(getContext());
         mMultiChoiceModeListener = new MultiChoiceModeListener();
+        //UNTIDY
+        KeepAliveIntent = new Intent(getContext(),KeepAlive.class);
 
+        //UNTIDY
         if (savedInstanceState != null) {
             currentSearchType = Parcels.unwrap(savedInstanceState.getParcelable(KEY_CURRENT_SEARCH_TYPE));
             searchEvent = Parcels.unwrap(savedInstanceState.getParcelable(OCFileListFragment.SEARCH_EVENT));
@@ -363,10 +431,6 @@ public class OCFileListFragment extends ExtendedListFragment implements
         }
 
         setTitle();
-
-        if (searchEvent != null) {
-            onMessageEvent(searchEvent);
-        }
     }
 
     protected void prepareCurrentSearch(SearchEvent event) {
@@ -1051,9 +1115,192 @@ public class OCFileListFragment extends ExtendedListFragment implements
             }
             case R.id.action_download_file:
             case R.id.action_sync_file: {
-                mContainerActivity.getFileOperationsHelper().syncFiles(checkedFiles);
-                exitSelectionMode();
-                return true;
+
+                //UNTIDYA
+
+                account = accountManager.getCurrentAccount();
+                accountName = account.name;
+                mContext = getContext();
+                //if(KeepAliveIntent !=null)
+                //mContext.stopService(KeepAliveIntent);
+                // Listen for download messages
+
+                IntentFilter downloadIntentFilter = new IntentFilter(
+                    FileDownloader.getDownloadAddedMessage());
+                downloadIntentFilter.addAction(FileDownloader.getDownloadFinishMessage());
+                mDownloadFinishReceiver = new DownloadFinishReceiver();
+                getActivity().registerReceiver(mDownloadFinishReceiver, downloadIntentFilter);
+
+
+
+
+
+
+
+                MatrixName = accountName.replace("@","/");
+                MasterFileName = MatrixName;
+                MasterFileName = MasterFileName.replace("/","_");
+                ServerPath = account.name.substring(account.name.indexOf("@")+1);
+                ServerPath = ServerPath.concat("/");
+                ServerPath = "http://".concat(ServerPath);
+                File file = new File(getContext().getFilesDir(),MasterFileName);
+                if(file.exists()){
+                    MatrixExist=true;
+                    Log.i("UNTIDYA", "There is a matrix");
+                }
+                else{
+                    MatrixExist=false;
+                    Log.i("UNTIDYA", "There is no matrix");
+                }
+
+                if(!MatrixExist) { // if no UNITDYMatrix were downloaded before
+
+
+                    try {
+
+                        UNTIDyMatrix = new RegisterUNTIDy().execute(ServerPath+"security/register.php?account=" + accountName + "&status=reset").get();
+                        Log.i("UNTIDYA", "Registeration Reply is: " + UNTIDyMatrix);
+                        jo = new JSONObject(UNTIDyMatrix);
+                        JSONaction = jo.getString("action");
+
+                        if (JSONaction.contentEquals("download")) {
+                            Log.i("UNTIDYA", "Registeration initial download ");
+                            JSONtime = jo.getString("time");
+                            JSONcontent = jo.getString("content");
+                            MatrixContent = JSONcontent;
+                            MatrixName = accountName.replace("@", "/");
+                            MasterFileName = MatrixName;
+                            MasterFileName = MasterFileName.replace("/", "_");
+                            FileOutputStream FOS = getActivity().openFileOutput(MasterFileName, MODE_PRIVATE);
+                            MatrixName = MatrixName + "/" + JSONtime;
+                            MatrixName = MatrixName.replace("/", "_");
+                            Log.i("UNTIDYA", "MatrixName name is: " + MatrixName);
+                            FOS.write(MatrixName.getBytes());
+                            FOS.close();
+                            FOS = getActivity().openFileOutput(MatrixName, MODE_PRIVATE);
+                            FOS.write(MatrixContent.getBytes());
+                            FOS.close();
+                            new Start().execute(ServerPath+"security/start.php").get();
+                            mContainerActivity.getFileOperationsHelper().syncFiles(checkedFiles);
+                            Log.d("UNTIDYA", "The checked files are:" + checkedFiles);
+                            new End().execute(ServerPath+"security/end.php").get();
+                            exitSelectionMode();
+                            return true;
+
+                        }
+
+                    } catch (ExecutionException e) {
+                        e.printStackTrace();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+
+                }
+                else
+                {
+
+                    MatrixName = accountName.replace("@","/");
+                    MatrixName = MatrixName.replace("/","_");
+                    MasterFileName = MatrixName;
+
+                    try{
+
+                    FileInputStream FIS = getActivity().openFileInput(MasterFileName);
+                    int c;
+                    String tmp = "";
+                    while((c = FIS.read())!=-1)
+                    {
+                        tmp = tmp + Character.toString((char)c);
+                    }
+                    MatrixName = tmp;
+                    FIS = getActivity().openFileInput(MatrixName);
+                    c=0;
+                    tmp = "";
+                    while((c = FIS.read())!=-1)
+                    {
+                        tmp = tmp + Character.toString((char)c);
+                    }
+                    MatrixContent = tmp;
+                    MatrixName = MatrixName.replace("_","/");
+                    Log.i("UNTIDYA", "Authentication after registeration ");
+                    Log.i("UNTIDYA", "Previosly saved matrix is: " + MatrixContent + " , and the file name is: " + MatrixName);
+                    String result = new Authenticate().execute(ServerPath+AUTHENTICATION_URL+MatrixName+"&matrix="+MatrixContent).get();
+                    Log.i("UNTIDYA", result);
+                    jo = new JSONObject(result);
+                    JSONaction = jo.getString("action");
+                    if(JSONaction.contentEquals("download"))
+                    {
+                        Log.i("UNTIDYA", "secondary download");
+                        JSONtime = jo.getString("time");
+                        JSONcontent = jo.getString("content");
+                        MatrixContent = JSONcontent;
+                        MatrixName = accountName.replace("@","/");
+                        MasterFileName = MatrixName;
+                        MasterFileName = MasterFileName.replace("/","_");
+                        FileOutputStream FOS = getActivity().openFileOutput(MasterFileName,MODE_PRIVATE);
+                        MatrixName = MatrixName + "/" + JSONtime;
+                        MatrixName = MatrixName.replace("/","_");
+                        FOS.write(MatrixName.getBytes());
+                        FOS.close();
+                        FOS = getActivity().openFileOutput(MatrixName,MODE_PRIVATE);
+                        FOS.write(MatrixContent.getBytes());
+                        FOS.close();
+
+                        //new Start().execute(ServerPath+"security/start.php").get();
+                        mContainerActivity.getFileOperationsHelper().syncFiles(checkedFiles);
+
+                        //test if file downloading
+
+
+
+                        //  new End().execute(ServerPath+"nextcloud/security/end.php").get();
+
+
+                        //KeepAliveIntent.putExtra("ACCOUNT_NAME", accountName);
+
+                        //mContext.startService(KeepAliveIntent);
+                        //bindKeepAliveService();
+                        exitSelectionMode();
+                        return true;
+
+
+                    }
+                    else
+                    {
+                        Log.i("UNTIDYA", "Authentication failed");
+                        file.delete();
+                        Toast.makeText(getActivity(), "Authentication failed, clear NextCloud account",
+                                       Toast.LENGTH_LONG).show();
+                        AccountManager am = (AccountManager) getActivity().getSystemService(getActivity().ACCOUNT_SERVICE);
+                        account = accountManager.getCurrentAccount();
+                        Log.i("UNTIDYA", "the account name is: " + account.name);
+                        am.removeAccount(account, null, null);
+                        getActivity().finish();
+                        Intent start = new Intent(getActivity(), FileDisplayActivity.class);
+                        start.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                        startActivity(start);
+
+                        //delete the matricies then
+                        //instruct the server to delete the mastricies or move them
+                        return true;
+                    }
+
+                    } catch (ExecutionException e) {
+                        e.printStackTrace();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+
+
             }
             case R.id.action_cancel_sync: {
                 ((FileDisplayActivity) mContainerActivity).cancelTransference(checkedFiles);
@@ -1062,6 +1309,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
             case R.id.action_favorite: {
                 mContainerActivity.getFileOperationsHelper().toggleFavoriteFiles(checkedFiles, true);
                 return true;
+
             }
             case R.id.action_unset_favorite: {
                 mContainerActivity.getFileOperationsHelper().toggleFavoriteFiles(checkedFiles, false);
@@ -1675,8 +1923,443 @@ public class OCFileListFragment extends ExtendedListFragment implements
             && event.getUnsetType() != null;
     }
 
+
+
+    private class GenerateUNTIDyMatrix extends AsyncTask<String,String,String> {
+
+        protected void onPreExecute() {
+            super.onPreExecute();
+
+            pd2 = new ProgressDialog(getActivity());
+            pd2.setMessage("Check UNTIDyMatrix on the server");
+            pd2.setCancelable(false);
+            pd2.show();
+
+        }
+
+        protected String doInBackground(String... params) {
+
+
+            HttpURLConnection connection = null;
+
+            int code;
+
+            try {
+                URL url = new URL(params[0]);
+                connection = (HttpURLConnection) url.openConnection();
+                connection.connect();
+
+                code = connection.getResponseCode();
+
+
+                return String.valueOf(code);
+
+
+            } catch (MalformedURLException e) {
+                e.printStackTrace();
+                Log.i("UNTIDYA","MalformedURLException");
+            } catch (IOException e) {
+                e.printStackTrace();
+                Log.i("UNTIDYA","IOException");
+            } finally {
+                if (connection != null) {
+                    connection.disconnect();
+                }
+
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(String result) {
+            super.onPostExecute(result);
+            if (pd2.isShowing())
+                pd2.dismiss();
+                Toast.makeText(getActivity(), "UNTIDyMatrix has been generated on the server. It will be downloaded soon",
+                               Toast.LENGTH_LONG).show();
+
+        }
+    }
+    private class RegisterUNTIDy extends AsyncTask<String,String,String> {
+
+        protected void onPreExecute() {
+            super.onPreExecute();
+            pd1 = new ProgressDialog(getActivity());
+            pd1.setMessage("Check enrollment status");
+            pd1.setCancelable(false);
+            pd1.show();
+        }
+
+        protected String doInBackground(String... params) {
+
+
+            HttpURLConnection connection = null;
+            BufferedReader reader = null;
+
+            try {
+
+                URL url = new URL(params[0]);
+                connection = (HttpURLConnection) url.openConnection();
+                connection.connect();
+
+                InputStream stream = connection.getInputStream();
+
+                reader = new BufferedReader(new InputStreamReader(stream));
+
+                StringBuffer buffer = new StringBuffer();
+                String line = "";
+
+                while ((line = reader.readLine()) != null) {
+                    buffer.append(line+"\n");
+
+
+                }
+
+                try
+                {
+                    Thread.sleep( 2 * 1000 );
+                }
+                catch ( InterruptedException e )
+                {
+                    Log.e( "MAINACTIVITY-ERROR", e.getMessage());
+
+                }
+//                Log.d("UNTIDYA ", "Enrollment status: " + buffer.toString());   //here u ll get whole response...... :-)
+                return buffer.toString();
+
+
+            } catch (MalformedURLException e) {
+                e.printStackTrace();
+                Log.i("UNTIDYA","MalformedURLException");
+            } catch (IOException e) {
+                e.printStackTrace();
+                Log.i("UNTIDYA","IOException");
+            } finally {
+                if (connection != null) {
+                    connection.disconnect();
+                }
+                try {
+                    if (reader != null) {
+                        reader.close();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(String result) {
+            super.onPostExecute(result);
+
+            if (pd1.isShowing()){
+                pd1.dismiss();
+                Toast.makeText(getActivity(), "Registeration reply received",
+                               Toast.LENGTH_LONG).show();
+            }
+
+
+
+
+        }
+
+
+    }
+    private class Authenticate extends AsyncTask<String,String,String> {
+
+        protected void onPreExecute() {
+            super.onPreExecute();
+
+
+        }
+
+        protected String doInBackground(String... params) {
+
+
+            HttpURLConnection connection = null;
+            BufferedReader reader = null;
+            try {
+
+                URL url = new URL(params[0]);
+                connection = (HttpURLConnection) url.openConnection();
+                connection.connect();
+
+                InputStream stream = connection.getInputStream();
+
+                reader = new BufferedReader(new InputStreamReader(stream));
+
+                StringBuffer buffer = new StringBuffer();
+                String line = "";
+
+                while ((line = reader.readLine()) != null) {
+                    buffer.append(line+"\n");
+                    Log.d("UNTIDYA ", "Response  " + line);   //here u ll get whole response...... :-)
+
+                }
+
+                return String.valueOf(buffer.toString());
+
+
+            } catch (MalformedURLException e) {
+                e.printStackTrace();
+                Log.i("UNTIDYA","MalformedURLException");
+            } catch (IOException e) {
+                e.printStackTrace();
+                Log.i("UNTIDYA","IOException");
+            } finally {
+                if (connection != null) {
+                    connection.disconnect();
+                }
+                try {
+                    if (reader != null) {
+                        reader.close();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(String result) {
+            super.onPostExecute(result);
+
+                Toast.makeText(getActivity(), result,
+                               Toast.LENGTH_LONG).show();
+
+
+        }
+    }
+
+// private class GenerateUNTIDyMatrix extends AsyncTask<String,String,String>
+// private class GetUNTIDyMatrix extends AsyncTask<String,String,String>
+// private class Authenticate extends AsyncTask<String,String,String>
+    private class Start extends AsyncTask<String,String,String> {
+
+    protected void onPreExecute() {
+        super.onPreExecute();
+    }
+
+    protected String doInBackground(String... params) {
+
+
+        HttpURLConnection connection = null;
+        BufferedReader reader = null;
+        try {
+
+            URL url = new URL(params[0]);
+            connection = (HttpURLConnection) url.openConnection();
+            connection.connect();
+
+            InputStream stream = connection.getInputStream();
+
+            reader = new BufferedReader(new InputStreamReader(stream));
+
+            StringBuffer buffer = new StringBuffer();
+            String line = "";
+
+            while ((line = reader.readLine()) != null) {
+                buffer.append(line+"\n");
+                Log.d("UNTIDYA ", "END");   //here u ll get whole response...... :-)
+
+            }
+            return String.valueOf(buffer.toString());
+
+
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+            Log.i("UNTIDYA","MalformedURLException");
+        } catch (IOException e) {
+            e.printStackTrace();
+            Log.i("UNTIDYA","IOException");
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+            try {
+                if (reader != null) {
+                    reader.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return null;
+    }
+
+    @Override
+    protected void onPostExecute(String result) {
+        super.onPostExecute(result);
+
+    }
+}
+    private class End extends AsyncTask<String,String,String> {
+
+    protected void onPreExecute() {
+        super.onPreExecute();
+    }
+
+    protected String doInBackground(String... params) {
+
+
+        HttpURLConnection connection = null;
+        BufferedReader reader = null;
+        try {
+
+            URL url = new URL(params[0]);
+            connection = (HttpURLConnection) url.openConnection();
+            connection.connect();
+
+            InputStream stream = connection.getInputStream();
+
+            reader = new BufferedReader(new InputStreamReader(stream));
+
+            StringBuffer buffer = new StringBuffer();
+            String line = "";
+
+            while ((line = reader.readLine()) != null) {
+                buffer.append(line+"\n");
+                Log.d("UNTIDYA ", "END");   //here u ll get whole response...... :-)
+
+            }
+            return String.valueOf(buffer.toString());
+
+
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+            Log.i("UNTIDYA","MalformedURLException");
+        } catch (IOException e) {
+            e.printStackTrace();
+            Log.i("UNTIDYA","IOException");
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+            try {
+                if (reader != null) {
+                    reader.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return null;
+    }
+
+    @Override
+    protected void onPostExecute(String result) {
+        super.onPostExecute(result);
+
+    }
+}
+
+
     @Override
     public boolean isLoading() {
         return false;
     }
+
+
+    private void bindKeepAliveService(){
+        if (KeepAliveConnection == null)
+            KeepAliveConnection = new ServiceConnection() {
+                @Override
+                public void onServiceConnected(ComponentName name, IBinder service) {
+                    KeepAlive.MyServiceBinder myServiceBinder = (KeepAlive.MyServiceBinder) service;
+                    keepalive = myServiceBinder.getService();
+                    isKeepAliveBounded =true;
+                }
+
+                @Override
+                public void onServiceDisconnected(ComponentName name) {
+                    isKeepAliveBounded =false;
+                }
+            };
+        KeepAliveIntent.putExtra("ACCOUNT_NAME", accountName);
+        getActivity().bindService(KeepAliveIntent,KeepAliveConnection, Context.BIND_AUTO_CREATE);
+        Log.i("UNTIDYA", "bindKeepAliveService: "+ "Done successfully");
+    }
+    private void unbindKeepAliveService() {
+        if(isKeepAliveBounded)
+        {
+            getActivity().unbindService(KeepAliveConnection);
+            isKeepAliveBounded =false;
+        }
+    }
+    //OperationsServices
+    private void bindOperationsServicesService(){
+        if (OperationsServiceConnection == null)
+            OperationsServiceConnection = new ServiceConnection() {
+                @Override
+                public void onServiceConnected(ComponentName name, IBinder service) {
+                    OperationsService.OperationsServiceBinder myServiceBinder = (OperationsService.OperationsServiceBinder) service;
+                    //operationsService = myServiceBinder.getService();
+                    isOperationsServiceBounded =true;
+                }
+
+                @Override
+                public void onServiceDisconnected(ComponentName name) {
+                    isOperationsServiceBounded =false;
+                }
+            };
+
+        getActivity().bindService(OperationsServiceIntent,OperationsServiceConnection, Context.BIND_AUTO_CREATE);
+        Log.i("UNTIDYA", "bindOperationsServicesService: "+ "Done successfully");
+    }
+    private void unbindOperationsServicesService() {
+        if(isOperationsServiceBounded)
+        {
+            getActivity().unbindService(OperationsServiceConnection);
+            isOperationsServiceBounded =false;
+        }
+    }
+
+    // Download Finish Broadcast - Part of UNTIDy as well
+
+    private class DownloadFinishReceiver extends BroadcastReceiver {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            try {
+                boolean sameAccount = isSameAccount(intent);
+                String downloadedRemotePath = intent.getStringExtra(FileDownloader.EXTRA_REMOTE_PATH);
+                String downloadBehaviour = intent.getStringExtra(OCFileListFragment.DOWNLOAD_BEHAVIOUR);
+
+                Log.i("UNTIDYA", "DownloadFinishReceiver onReceive: great! "+intent.getAction());
+
+                if(intent.getAction().equals(FileDownloader.getDownloadFinishMessage()))
+                {
+                    bindKeepAliveService();
+                }
+                if(intent.getAction().equals(FileDownloader.getDownloadAddedMessage())){
+                    unbindKeepAliveService();
+                }
+
+            } finally {
+                if (intent != null) {
+                    getActivity().removeStickyBroadcast(intent);
+                }
+            }
+        }
+
+        private boolean isSameAccount(Intent intent) {
+          //  String accountName = intent.getStringExtra(FileDownloader.ACCOUNT_NAME);
+          //  return accountName != null && mContext.getAccount() != null && accountName.equals(getAccount().name);
+        return true;
+
+
+    }
+        private boolean isFileisDone(Intent intent, String fileName)
+        {
+            Log.i("UNTIDYA", "isFileisDone: "+intent.getStringExtra(FileDownloader.EXTRA_REMOTE_PATH));
+            return true;
+        }
+    }
+
 }
+
+
+
+
