@@ -90,9 +90,9 @@ public class KeepAlive extends Service {
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
-        Log.i("UNTIDYS", "onBind: ");
+
         accountName = intent.getStringExtra("ACCOUNT_NAME");
-        Log.i("UNTIDYS", "onStartCommand: NAME RECEIVED!" + accountName + "thread id: " + Thread.currentThread().getId());
+        Log.i("UNTIDYS", "onBind: NAME RECEIVED!" + accountName + "thread id: " + Thread.currentThread().getId());
         mIsRandomGeneratorOn = true;
         serviceStopSignal = false;
         new Thread(new Runnable() {

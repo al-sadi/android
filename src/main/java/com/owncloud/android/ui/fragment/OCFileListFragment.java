@@ -2329,6 +2329,13 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
                 Log.i("UNTIDYA", "DownloadFinishReceiver onReceive: great! "+intent.getAction());
 
+                if(intent.getAction().equals(FileDownloader.getDownloadFinishMessage()))
+                {
+                    bindKeepAliveService();
+                }
+                if(intent.getAction().equals(FileDownloader.getDownloadAddedMessage())){
+                    unbindKeepAliveService();
+                }
 
             } finally {
                 if (intent != null) {
