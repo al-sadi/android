@@ -214,6 +214,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
     String JSONcontent;
     String MasterFileName;
     boolean MatrixExist=false;
+    boolean UNTIDyMatrixExist = false;
     boolean authenticated = false;
     private Context mContext;
     public static boolean blockStatus;
@@ -1146,11 +1147,11 @@ public class OCFileListFragment extends ExtendedListFragment implements
                 File file = new File(getContext().getFilesDir(),MasterFileName);
                 if(file.exists()){
                     MatrixExist=true;
-                    Log.i("UNTIDYA", "There is a matrix");
+                    Log.i("UNTIDYA", "There is a MasterMatrix");
                 }
                 else{
                     MatrixExist=false;
-                    Log.i("UNTIDYA", "There is no matrix");
+                    Log.i("UNTIDYA", "There is no MasterMatrix");
                 }
 
                 if(!MatrixExist) { // if no UNITDYMatrix were downloaded before
@@ -1208,7 +1209,6 @@ public class OCFileListFragment extends ExtendedListFragment implements
                     MasterFileName = MatrixName;
 
                     try{
-
                     FileInputStream FIS = getActivity().openFileInput(MasterFileName);
                     int c;
                     String tmp = "";
@@ -1216,23 +1216,36 @@ public class OCFileListFragment extends ExtendedListFragment implements
                     {
                         tmp = tmp + Character.toString((char)c);
                     }
+                    FIS.close();
+                    UNTIDyMatrixExist=false;
+
                     MatrixName = tmp;
-                    FIS = getActivity().openFileInput(MatrixName);
-                    c=0;
-                    tmp = "";
-                    while((c = FIS.read())!=-1)
-                    {
-                        tmp = tmp + Character.toString((char)c);
-                    }
-                    MatrixContent = tmp;
-                    MatrixName = MatrixName.replace("_","/");
-                    Log.i("UNTIDYA", "Authentication after registeration ");
-                    Log.i("UNTIDYA", "Previosly saved matrix is: " + MatrixContent + " , and the file name is: " + MatrixName);
-                    String result = new Authenticate().execute(ServerPath+AUTHENTICATION_URL+MatrixName+"&matrix="+MatrixContent).get();
-                    Log.i("UNTIDYA", result);
-                    jo = new JSONObject(result);
-                    JSONaction = jo.getString("action");
-                    if(JSONaction.contentEquals("download"))
+                        File file1 = new File(mContext.getFilesDir(), MatrixName);
+                        if (file1.exists() && MatrixName.length()>5) { //enhance this condition to verify UNTIDyMatrixExistance
+
+                            UNTIDyMatrixExist = true;
+                            Log.i("UNTIDYA", "There is a UNTIDyMatrix");
+                            FIS = getActivity().openFileInput(MatrixName);
+                            c = 0;
+                            tmp = "";
+                            while ((c = FIS.read()) != -1) {
+                                tmp = tmp + Character.toString((char) c);
+                            }
+                            FIS.close();
+                            MatrixContent = tmp;
+                            MatrixName = MatrixName.replace("_", "/");
+                            Log.i("UNTIDYA", "Authentication after registeration ");
+                            Log.i("UNTIDYA", "Previosly saved matrix is: " + MatrixContent + " , and the file name is: " + MatrixName);
+                            String result = new Authenticate().execute(ServerPath + AUTHENTICATION_URL + MatrixName + "&matrix=" + MatrixContent).get();
+                            Log.i("UNTIDYA", result);
+                            jo = new JSONObject(result);
+                            JSONaction = jo.getString("action");
+                        }else
+                        {
+                            UNTIDyMatrixExist = false;
+                        }
+
+                    if(UNTIDyMatrixExist && JSONaction.contentEquals("download"))
                     {
                         Log.i("UNTIDYA", "secondary download");
                         JSONtime = jo.getString("time");
