@@ -56,6 +56,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.nextcloud.client.account.UserAccountManager;
 import com.nextcloud.client.di.Injectable;
 import com.nextcloud.client.preferences.AppPreferences;
+import com.nextcloud.client.preferences.AppPreferencesImpl;
 import com.owncloud.android.MainApp;
 import com.owncloud.android.R;
 import com.owncloud.android.lib.common.utils.Log_OC;
@@ -136,7 +137,7 @@ public class ExtendedListFragment extends Fragment implements
     protected SearchView searchView;
     private Handler handler = new Handler(Looper.getMainLooper());
 
-    private float mScale = -1f;
+    private float mScale = AppPreferencesImpl.DEFAULT_GRID_COLUMN;
 
     @Parcel
     public enum SearchType {
@@ -192,6 +193,9 @@ public class ExtendedListFragment extends Fragment implements
         searchView.setOnQueryTextListener(this);
         searchView.setOnCloseListener(this);
         ThemeUtils.themeSearchView(searchView, true, requireContext());
+
+        SearchView.SearchAutoComplete theTextArea = searchView.findViewById(R.id.search_src_text);
+        theTextArea.setHighlightColor(ThemeUtils.primaryAccentColor(getContext()));
 
         final Handler handler = new Handler();
 
@@ -300,13 +304,10 @@ public class ExtendedListFragment extends Fragment implements
                 handler.postDelayed(new Runnable() {
                     @Override
                     public void run() {
-                        if (accountManager.isSearchSupported(accountManager.getCurrentAccount())) {
-                            EventBus.getDefault().post(new SearchEvent(query,
-                                SearchRemoteOperation.SearchType.FILE_SEARCH, SearchEvent.UnsetType.NO_UNSET));
-                        } else {
-                            OCFileListAdapter fileListListAdapter = (OCFileListAdapter) adapter;
-                            fileListListAdapter.getFilter().filter(query);
-                        }
+                        EventBus.getDefault().post(new SearchEvent(query,
+                                                                   SearchRemoteOperation.SearchType.FILE_SEARCH,
+                                                                   SearchEvent.UnsetType.NO_UNSET));
+
                     }
                 }, delay);
             } else if (adapter instanceof LocalFileListAdapter) {
@@ -328,7 +329,7 @@ public class ExtendedListFragment extends Fragment implements
                 if (activity instanceof FileDisplayActivity) {
                     FileDisplayActivity fileDisplayActivity = (FileDisplayActivity) activity;
                     fileDisplayActivity.resetSearchView();
-                    fileDisplayActivity.refreshListOfFilesFragment(true);
+                    fileDisplayActivity.updateListOfFilesFragment(true);
                 } else if (activity instanceof UploadFilesActivity) {
                     LocalFileListAdapter localFileListAdapter = (LocalFileListAdapter) adapter;
                     localFileListAdapter.filter(query);
@@ -423,8 +424,8 @@ public class ExtendedListFragment extends Fragment implements
         mEmptyListHeadline = view.findViewById(R.id.empty_list_view_headline);
         mEmptyListIcon = view.findViewById(R.id.empty_list_icon);
         mEmptyListProgress = view.findViewById(R.id.empty_list_progress);
-        mEmptyListProgress.getIndeterminateDrawable().setColorFilter(ThemeUtils.primaryColor(getContext()),
-                PorterDuff.Mode.SRC_IN);
+        mEmptyListProgress.getIndeterminateDrawable().setColorFilter(ThemeUtils.primaryColor(getContext(), true),
+                                                                     PorterDuff.Mode.SRC_IN);
     }
 
     /**
@@ -454,8 +455,6 @@ public class ExtendedListFragment extends Fragment implements
             mTops = new ArrayList<>();
             mHeightCell = 0;
         }
-
-        mScale = preferences.getGridColumns();
     }
 
 
@@ -474,6 +473,9 @@ public class ExtendedListFragment extends Fragment implements
     }
 
     public int getColumnsCount() {
+        if (mScale == -1) {
+            return Math.round(AppPreferencesImpl.DEFAULT_GRID_COLUMN);
+        }
         return Math.round(mScale);
     }
 

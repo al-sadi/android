@@ -25,7 +25,6 @@
  */
 package com.owncloud.android.ui.activity;
 
-import android.accounts.Account;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -39,7 +38,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.preference.ListPreference;
 import android.preference.Preference;
-import android.preference.PreferenceActivity;
 import android.preference.PreferenceCategory;
 import android.preference.PreferenceManager;
 import android.preference.PreferenceScreen;
@@ -53,15 +51,19 @@ import android.view.ViewGroup;
 import android.view.Window;
 import android.webkit.URLUtil;
 
+import com.nextcloud.client.account.User;
 import com.nextcloud.client.account.UserAccountManager;
 import com.nextcloud.client.di.Injectable;
 import com.nextcloud.client.etm.EtmActivity;
 import com.nextcloud.client.logger.ui.LogsActivity;
+import com.nextcloud.client.network.ClientFactory;
 import com.nextcloud.client.preferences.AppPreferences;
 import com.nextcloud.client.preferences.AppPreferencesImpl;
+import com.nextcloud.client.preferences.DarkMode;
 import com.owncloud.android.BuildConfig;
 import com.owncloud.android.MainApp;
 import com.owncloud.android.R;
+import com.owncloud.android.authentication.AuthenticatorActivity;
 import com.owncloud.android.authentication.PassCodeManager;
 import com.owncloud.android.datamodel.ArbitraryDataProvider;
 import com.owncloud.android.datamodel.ExternalLinksProvider;
@@ -69,8 +71,6 @@ import com.owncloud.android.datastorage.DataStorageProvider;
 import com.owncloud.android.datastorage.StoragePoint;
 import com.owncloud.android.lib.common.ExternalLink;
 import com.owncloud.android.lib.common.ExternalLinkType;
-import com.owncloud.android.lib.common.OwnCloudAccount;
-import com.owncloud.android.lib.common.OwnCloudClientManagerFactory;
 import com.owncloud.android.lib.common.utils.Log_OC;
 import com.owncloud.android.ui.asynctasks.LoadingVersionNumberTask;
 import com.owncloud.android.utils.DeviceCredentialUtils;
@@ -80,6 +80,7 @@ import com.owncloud.android.utils.MimeTypeUtil;
 import com.owncloud.android.utils.ThemeUtils;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import javax.inject.Inject;
 
@@ -95,7 +96,7 @@ import androidx.core.content.res.ResourcesCompat;
  *
  * It proxies the necessary calls via {@link androidx.appcompat.app.AppCompatDelegate} to be used with AppCompat.
  */
-public class SettingsActivity extends PreferenceActivity
+public class SettingsActivity extends ThemedPreferenceActivity
     implements StorageMigration.StorageMigrationProgressListener, LoadingVersionNumberTask.VersionDevInterface,
     Injectable {
 
@@ -107,6 +108,7 @@ public class SettingsActivity extends PreferenceActivity
     public static final String LOCK_PASSCODE = "passcode";
     public static final String LOCK_DEVICE_CREDENTIALS = "device_credentials";
 
+
     public final static String PREFERENCE_USE_FINGERPRINT = "use_fingerprint";
     public static final String PREFERENCE_SHOW_MEDIA_SCAN_NOTIFICATIONS = "show_media_scan_notifications";
 
@@ -114,6 +116,7 @@ public class SettingsActivity extends PreferenceActivity
     private static final int ACTION_CONFIRM_PASSCODE = 6;
     private static final int ACTION_CONFIRM_DEVICE_CREDENTIALS = 7;
     private static final int ACTION_REQUEST_CODE_DAVDROID_SETUP = 10;
+    private static final int TRUE_VALUE = 1;
 
     private static final String DAV_PATH = "/remote.php/dav";
 
@@ -129,10 +132,11 @@ public class SettingsActivity extends PreferenceActivity
     private String storagePath;
     private String pendingLock;
 
-    private Account account;
+    private User user;
     @Inject ArbitraryDataProvider arbitraryDataProvider;
     @Inject AppPreferences preferences;
     @Inject UserAccountManager accountManager;
+    @Inject ClientFactory clientFactory;
 
     @SuppressWarnings("deprecation")
     @Override
@@ -155,7 +159,7 @@ public class SettingsActivity extends PreferenceActivity
         String appVersion = getAppVersion();
         PreferenceScreen preferenceScreen = (PreferenceScreen) findPreference("preference_screen");
 
-        account = accountManager.getCurrentAccount();
+        user = accountManager.getUser();
 
         // retrieve user's base uri
         setupBaseUri();
@@ -170,7 +174,7 @@ public class SettingsActivity extends PreferenceActivity
         setupDetailsCategory(accentColor, preferenceScreen);
 
         // More
-        setupMoreCategory(accentColor, appVersion);
+        setupMoreCategory(accentColor);
 
         // About
         setupAboutCategory(accentColor, appVersion);
@@ -308,7 +312,7 @@ public class SettingsActivity extends PreferenceActivity
         }
     }
 
-    private void setupMoreCategory(int accentColor, String appVersion) {
+    private void setupMoreCategory(int accentColor) {
         PreferenceCategory preferenceCategoryMore = (PreferenceCategory) findPreference("more");
         preferenceCategoryMore.setTitle(ThemeUtils.getColoredTitle(getString(R.string.prefs_category_more),
                 accentColor));
@@ -407,7 +411,7 @@ public class SettingsActivity extends PreferenceActivity
     }
 
     private void setupE2EMnemonicPreference(PreferenceCategory preferenceCategoryMore) {
-        String mnemonic = arbitraryDataProvider.getValue(account.name, EncryptionUtils.MNEMONIC);
+        String mnemonic = arbitraryDataProvider.getValue(user.getAccountName(), EncryptionUtils.MNEMONIC);
 
         Preference pMnemonic = findPreference("mnemonic");
         if (pMnemonic != null) {
@@ -602,11 +606,11 @@ public class SettingsActivity extends PreferenceActivity
 
             final SwitchPreference pUploadOnWifiCheckbox = (SwitchPreference) findPreference("synced_folder_on_wifi");
             pUploadOnWifiCheckbox.setChecked(
-                    arbitraryDataProvider.getBooleanValue(account, SYNCED_FOLDER_LIGHT_UPLOAD_ON_WIFI));
+                    arbitraryDataProvider.getBooleanValue(user.toPlatformAccount(), SYNCED_FOLDER_LIGHT_UPLOAD_ON_WIFI));
 
             pUploadOnWifiCheckbox.setOnPreferenceClickListener(preference -> {
-                arbitraryDataProvider.storeOrUpdateKeyValue(account.name, SYNCED_FOLDER_LIGHT_UPLOAD_ON_WIFI,
-                        String.valueOf(pUploadOnWifiCheckbox.isChecked()));
+                arbitraryDataProvider.storeOrUpdateKeyValue(user.getAccountName(), SYNCED_FOLDER_LIGHT_UPLOAD_ON_WIFI,
+                                                            String.valueOf(pUploadOnWifiCheckbox.isChecked()));
 
                 return true;
             });
@@ -690,6 +694,34 @@ public class SettingsActivity extends PreferenceActivity
         }
 
         loadStoragePath();
+
+        ListPreference themePref = (ListPreference) findPreference("darkMode");
+
+        List<String> themeEntries = new ArrayList<>(3);
+        themeEntries.add(getString(R.string.prefs_value_theme_light));
+        themeEntries.add(getString(R.string.prefs_value_theme_dark));
+        themeEntries.add(getString(R.string.prefs_value_theme_system));
+
+        List<String> themeValues = new ArrayList<>(3);
+        themeValues.add(DarkMode.LIGHT.name());
+        themeValues.add(DarkMode.DARK.name());
+        themeValues.add(DarkMode.SYSTEM.name());
+
+        themePref.setEntries(themeEntries.toArray(new String[0]));
+        themePref.setEntryValues(themeValues.toArray(new String[0]));
+
+        if (TextUtils.isEmpty(themePref.getEntry())) {
+            themePref.setValue(DarkMode.SYSTEM.name());
+            themePref.setSummary(TextUtils.isEmpty(themePref.getEntry()) ? DarkMode.SYSTEM.name() : themePref.getEntry());
+        }
+
+        themePref.setOnPreferenceChangeListener((preference, newValue) -> {
+            DarkMode mode = DarkMode.valueOf((String) newValue);
+            preferences.setDarkThemeMode(mode);
+            MainApp.setAppTheme(mode);
+
+            return true;
+        });
     }
 
     private String getAppVersion() {
@@ -719,13 +751,13 @@ public class SettingsActivity extends PreferenceActivity
             actionBar.setBackgroundDrawable(new ColorDrawable(ThemeUtils.primaryColor(this)));
 
             Drawable backArrow = getResources().getDrawable(R.drawable.ic_arrow_back);
-            actionBar.setHomeAsUpIndicator(ThemeUtils.tintDrawable(backArrow, ThemeUtils.fontColor(this)));
+            actionBar.setHomeAsUpIndicator(ThemeUtils.tintDrawable(backArrow, ThemeUtils.fontColor(this, true)));
         }
 
         Window window = getWindow();
         if (window != null) {
             window.getDecorView().setBackgroundDrawable(new ColorDrawable(ResourcesCompat
-                    .getColor(getResources(), R.color.background_color, null)));
+                    .getColor(getResources(), R.color.bg_default, null)));
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                 window.setStatusBarColor(ThemeUtils.primaryColor(this));
@@ -748,8 +780,13 @@ public class SettingsActivity extends PreferenceActivity
             // arguments
             if (serverBaseUri != null) {
                 davDroidLoginIntent.putExtra("url", serverBaseUri.toString() + DAV_PATH);
+
+                davDroidLoginIntent.putExtra("loginFlow", TRUE_VALUE);
+                davDroidLoginIntent.setData(Uri.parse(serverBaseUri.toString() + AuthenticatorActivity.WEB_LOGIN));
+                davDroidLoginIntent.putExtra("davPath", DAV_PATH);
             }
-            davDroidLoginIntent.putExtra("username", UserAccountManager.getUsername(account));
+            davDroidLoginIntent.putExtra("username", UserAccountManager.getUsername(user.toPlatformAccount()));
+
             startActivityForResult(davDroidLoginIntent, ACTION_REQUEST_CODE_DAVDROID_SETUP);
         } else {
             // DAVdroid not installed
@@ -773,9 +810,7 @@ public class SettingsActivity extends PreferenceActivity
         // retrieve and set user's base URI
         Thread t = new Thread(() -> {
             try {
-                OwnCloudAccount ocAccount = new OwnCloudAccount(account, MainApp.getAppContext());
-                serverBaseUri = OwnCloudClientManagerFactory.getDefaultSingleton().getClientFor(ocAccount,
-                        getApplicationContext()).getBaseUri();
+                serverBaseUri = clientFactory.create(user).getBaseUri();
             } catch (Exception e) {
                 Log_OC.e(TAG, "Error retrieving user's base URI", e);
             }
@@ -841,7 +876,7 @@ public class SettingsActivity extends PreferenceActivity
                         RequestCredentialsActivity.KEY_CHECK_RESULT_TRUE) {
 
                     ArbitraryDataProvider arbitraryDataProvider = new ArbitraryDataProvider(getContentResolver());
-                    String mnemonic = arbitraryDataProvider.getValue(account.name, EncryptionUtils.MNEMONIC);
+                    String mnemonic = arbitraryDataProvider.getValue(user.getAccountName(), EncryptionUtils.MNEMONIC);
 
                     int accentColor = ThemeUtils.primaryAccentColor(this);
 
@@ -1001,5 +1036,4 @@ public class SettingsActivity extends PreferenceActivity
     public void returnVersion(Integer latestVersion) {
         FileActivity.showDevSnackbar(this, latestVersion, true);
     }
-
 }

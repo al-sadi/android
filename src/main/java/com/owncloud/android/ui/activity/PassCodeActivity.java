@@ -23,8 +23,8 @@
 package com.owncloud.android.ui.activity;
 
 import android.content.Intent;
-import android.graphics.PorterDuff;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
@@ -97,7 +97,7 @@ public class PassCodeActivity extends AppCompatActivity implements Injectable {
         int elementColor = ThemeUtils.elementColor(this);
 
         mBCancel = findViewById(R.id.cancel);
-        mBCancel.getBackground().setColorFilter(elementColor, PorterDuff.Mode.SRC_ATOP);
+        mBCancel.setBackgroundColor(ThemeUtils.primaryColor(this));
 
         mPassCodeHdr = findViewById(R.id.header);
         mPassCodeHdrExplanation = findViewById(R.id.explanation);
@@ -240,7 +240,7 @@ public class PassCodeActivity extends AppCompatActivity implements Injectable {
         if (ACTION_CHECK.equals(getIntent().getAction())) {
             if (checkPassCode()) {
                 /// pass code accepted in request, user is allowed to access the app
-                AppPreferencesImpl.fromContext(this).setLockTimestamp(System.currentTimeMillis());
+                AppPreferencesImpl.fromContext(this).setLockTimestamp(SystemClock.elapsedRealtime());
                 hideSoftKeyboard();
                 finish();
 
@@ -250,7 +250,7 @@ public class PassCodeActivity extends AppCompatActivity implements Injectable {
 
         } else if (ACTION_CHECK_WITH_RESULT.equals(getIntent().getAction())) {
             if (checkPassCode()) {
-                AppPreferencesImpl.fromContext(this).setLockTimestamp(System.currentTimeMillis());
+                AppPreferencesImpl.fromContext(this).setLockTimestamp(SystemClock.elapsedRealtime());
                 Intent resultIntent = new Intent();
                 resultIntent.putExtra(KEY_CHECK_RESULT, true);
                 setResult(RESULT_OK, resultIntent);

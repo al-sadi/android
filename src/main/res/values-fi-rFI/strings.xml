@@ -8,6 +8,7 @@
     <string name="account_icon">Tilikuvake</string>
     <string name="account_not_found">Tiliä ei löydy!</string>
     <string name="action_clear_failed_uploads">Tyhjennä epäonnistuneet lähetykset</string>
+    <string name="action_edit">Muokkaa</string>
     <string name="action_empty_notifications">Hylkää kaikki ilmoitukset</string>
     <string name="action_empty_trashbin">Tyhjennä roskakori</string>
     <string name="action_send_share">Lähetä/jaa</string>
@@ -16,7 +17,6 @@
     <string name="actionbar_contacts">Varmuuskopioi yhteystietosi</string>
     <string name="actionbar_contacts_restore">Palauta yhteystiedot</string>
     <string name="actionbar_copy">Kopioi</string>
-    <string name="actionbar_logger">Lokit</string>
     <string name="actionbar_mkdir">Uusi kansio</string>
     <string name="actionbar_move">Siirrä</string>
     <string name="actionbar_open_as_richdocument_parameter">Avaa käyttäen %1$s</string>
@@ -77,6 +77,7 @@
     <string name="auto_upload_file_behaviour_kept_in_folder">Säilytetty alkuperäisessä kansiossa, koska se on vain luku</string>
     <string name="auto_upload_on_wifi">Lähetä vain Wi-Fi-yhteydellä</string>
     <string name="auto_upload_path">/AutoUpload</string>
+    <string name="autoupload_configure">Asetukset</string>
     <string name="autoupload_create_new_custom_folder">Luo uusi kansioasetus</string>
     <string name="autoupload_custom_folder">Määritä oma kansio</string>
     <string name="autoupload_disable_power_save_check">Poista virransäästövalinta käytöstä</string>
@@ -170,6 +171,7 @@
     <string name="copy_link">Kopioi linkki</string>
     <string name="copy_move_to_encrypted_folder_not_supported">Kopiointi/siirto salattuun kansioon ei ole mahdollista.</string>
     <string name="copy_to">Kopio kohteeseen…</string>
+    <string name="could_not_download_image">Koko kuvan lataaminen epäonnistui</string>
     <string name="could_not_retrieve_url">URL:n nouto epännistui</string>
     <string name="create_dir_fail_msg">Kansion luominen ei onnistunut</string>
     <string name="create_file_from_template">Luodaan tiedosto mallipohjasta…</string>
@@ -202,6 +204,7 @@
     <string name="downloader_download_succeeded_ticker">Ladattu</string>
     <string name="downloader_not_downloaded_yet">Ei vielä ladattu</string>
     <string name="drawer_close">Sulje valikko</string>
+    <string name="drawer_community">Yhteisö</string>
     <string name="drawer_current_account">Nykyinen tili</string>
     <string name="drawer_end_account">Viimeisin tili</string>
     <string name="drawer_header_background">Taustakuva \"Drawer\":in yläosassa</string>
@@ -214,7 +217,6 @@
     <string name="drawer_item_photos">Kuvat</string>
     <string name="drawer_item_recently_added">Äskettäin lisätyt</string>
     <string name="drawer_item_recently_modified">Äskettäin muokatut</string>
-    <string name="drawer_item_settings">Asetukset</string>
     <string name="drawer_item_shared">Jaot</string>
     <string name="drawer_item_trashbin">Poistetut tiedostot</string>
     <string name="drawer_item_uploads_list">Lähetykset</string>
@@ -223,7 +225,6 @@
     <string name="drawer_manage_accounts">Tilien hallinta</string>
     <string name="drawer_middle_account">Keskimmäinen tili</string>
     <string name="drawer_open">Avaa valikko</string>
-    <string name="drawer_participate">Ilmoita ongelmasta!</string>
     <string name="drawer_quota">%1$s / %2$s käytetty</string>
     <string name="drawer_quota_unlimited">%1$s käytetty</string>
     <string name="drawer_synced_folders">Automaattinen lähetys</string>
@@ -258,11 +259,12 @@
     <string name="etm_preferences">Asetukset</string>
     <string name="etm_title">Kehittäjän testitila</string>
     <string name="fab_label">Lisää tai lähetä</string>
+    <string name="failed_to_print">Tiedoston tulostaminen epäonnistui</string>
     <string name="fallback_weblogin_back">Takaisin</string>
     <string name="fallback_weblogin_text">Palaa vanhaan kirjautumistapaan</string>
     <string name="favorite">Lisää suosikkeihin</string>
     <string name="favorite_icon">Suosikki</string>
-    <string name="feedback_no_mail_app">Sovellusta ei löydy sähköpostin lähettämiseen!</string>
+    <string name="file">tiedosto</string>
     <string name="file_delete">Poista</string>
     <string name="file_details_no_content">Lisätietoja ei voitu lataa.</string>
     <string name="file_icon">Tiedosto</string>
@@ -331,6 +333,7 @@
     <string name="first_run_2_text">Turvallista yhteistyötä ja tiedostonvaihtoa</string>
     <string name="first_run_3_text">Helppokäyttöinen selaimessa toimiva sähköposti, kalenteri ja yhteystiedot</string>
     <string name="first_run_4_text">Näytönjakaminen, verkkotapaamiset ja web-konfrenssit</string>
+    <string name="folder">kansio</string>
     <string name="folder_already_exists">Kansio on jo olemassa</string>
     <string name="folder_confirm_create">Luo</string>
     <string name="folder_icon">Kansiokuvake</string>
@@ -364,8 +367,6 @@
     <string name="local_file_list_empty">Tässä kansiossa ei ole tiedostoja</string>
     <string name="local_file_not_found_message">Tiedostoa ei löytynyt paikallisesta tiedostojärjestelmästä</string>
     <string name="local_folder_list_empty">Kansioita ei ole enempää.</string>
-    <string name="log_progress_dialog_text">Ladataan tietoja…</string>
-    <string name="log_send_history_button">Lähetä historia</string>
     <string name="log_send_mail_subject">%1$sin Android-sovelluksen lokit</string>
     <string name="log_send_no_mail_app">Lokien lähettämiseen soveltuvaa sovellusta ei löytynyt. Asenna sähköpostisovellus.</string>
     <string name="login">Kirjaudu sisään</string>
@@ -384,18 +385,13 @@
     <string name="media_err_invalid_progressive_playback">Mediatiedostoa ei voi suoratoistaa</string>
     <string name="media_err_io">Mediatiedostoa ei voitu lukea</string>
     <string name="media_err_malformed">Mediatiedostoa ei ole koodattu kelvollisesti</string>
-    <string name="media_err_not_in_owncloud">Tiedosto ei ole kelvollinen tili</string>
-    <string name="media_err_nothing_to_play">Mediatiedostoa ei löytynyt</string>
-    <string name="media_err_playing">Odottamaton virhe yrittäessä toistaa kohdetta %1$s</string>
     <string name="media_err_timeout">Tiedoston toisto aikakatkaistiin.</string>
     <string name="media_err_unknown">Sisäänrakennettu mediasoitin ei voi toistaa mediatiedostoa</string>
     <string name="media_err_unsupported">Mediakoodekki ei ole tuettu</string>
-    <string name="media_event_done">%1$s toistaminen on valmis</string>
     <string name="media_forward_description">Eteenpäin kelaus -painike</string>
     <string name="media_notif_ticker">%1$s-musiikkisoitin</string>
     <string name="media_play_pause_description">Toisto tai keskeytys -painike</string>
     <string name="media_rewind_description">Taaksepäin kelaus -painike</string>
-    <string name="media_state_loading">%1$s (ladataan)</string>
     <string name="media_state_playing">%1$s (toistetaan)</string>
     <string name="menu_item_sort_by_date_newest_first">Uusin ensin</string>
     <string name="menu_item_sort_by_date_oldest_first">Vanhin ensin</string>
@@ -419,6 +415,7 @@
     <string name="new_notification">Uusi Ilmoitus</string>
     <string name="new_version_was_created">Luotiin uusi versio</string>
     <string name="no_browser_available">Linkkien käsittelyyn ei ole sovellusta</string>
+    <string name="no_mutliple_accounts_allowed">Vain yksi tili on sallittu</string>
     <string name="no_pdf_app_available">PDF -sovellusta ei löydy</string>
     <string name="note_confirm">Lähetä</string>
     <string name="note_could_not_sent">Huomiota ei voitu lähettää</string>
@@ -445,25 +442,6 @@
     <string name="operation_canceled">Toiminto on peruttu</string>
     <string name="outdated_server">Palvelimen elinkaari on päättynyt, päivitä!</string>
     <string name="overflow_menu">Lisää -valikko</string>
-    <string name="participate_beta_headline">Testaa kehitysversiota</string>
-    <string name="participate_beta_text">Tämä käsittää kaikki tulevat ominaisuudet ja sisältää täysin uutta, jopa testaamatonta, koodia. Bugeja ja virheitä voi löytyä. Jos ja kun niin käy, muista raportoida niistä, jotta ne korjattaisiin. </string>
-    <string name="participate_contribute_forum_forum">keskustelupalsta</string>
-    <string name="participate_contribute_forum_text">Auta muita. Avaa</string>
-    <string name="participate_contribute_github_text">Tutki, muokkaa ja luo ohjelmia. Katso lisätietoja %1$s</string>
-    <string name="participate_contribute_headline">Osallistu kehittämiseen</string>
-    <string name="participate_contribute_irc_text">Liity keskusteluun IRC:ssä:</string>
-    <string name="participate_contribute_translate_text">sovellus</string>
-    <string name="participate_contribute_translate_translate">Käännä</string>
-    <string name="participate_dev_direct_download">Lataa kehitysjulkaisu suoraan</string>
-    <string name="participate_dev_fdroid">Lataa kehitysjulkaisu F-Droidin äpillä.</string>
-    <string name="participate_rc_fdroid">Lataa julkaisuehdokas F-Droidin äpillä.</string>
-    <string name="participate_rc_play_store">Lataa julkaisuehdokas Googlen Play storesta.</string>
-    <string name="participate_release_candidate_headline">Julkaisuehdokas</string>
-    <string name="participate_release_candidate_text">Julkaisuehdokas (RC) on lähes valmis versio virallisesti julkaistavasta versiosta ja on yleensä täysin toimiva. Testaa omat asetukset ja varmista niiden toimivuus. Kirjaudu siis testaajaksi Play storessa tai katso \"Version\" valikosta F-Droid äpissä.</string>
-    <string name="participate_testing_bug_text">Löysitkö bugin tai jotain muuta outoa?</string>
-    <string name="participate_testing_headline">Auta testaamalla</string>
-    <string name="participate_testing_report_text">Ilmoita ongelmasta GitHubissa</string>
-    <string name="participate_testing_version_text">Oletko kiinnostunut auttamaan testaamalla seuraavaa versiota?</string>
     <string name="pass_code_configure_your_pass_code">Anna suojakoodisi</string>
     <string name="pass_code_configure_your_pass_code_explanation">Suojakoodi kysytään joka kerta, kun sovellus käynnistetään</string>
     <string name="pass_code_enter_pass_code">Anna suojakoodi</string>
@@ -482,7 +460,6 @@
     <string name="placeholder_media_time">12:23:45</string>
     <string name="placeholder_sentence">Tämä on paikkamerkki</string>
     <string name="placeholder_timestamp">18.05.2012 12:23</string>
-    <string name="power_check_dialog_title">Poista virransäästövalinta käytöstä</string>
     <string name="power_save_check_dialog_message">Virransäästötilan tarkistuksen poistaminen saattaa johtaa tiedostojen lähettämiseen alhaisella akun varauksella!</string>
     <string name="pref_behaviour_entries_delete_file">Poistetaan</string>
     <string name="pref_behaviour_entries_keep_file">Pidetään alkuperäisessä kansiossa</string>
@@ -503,7 +480,6 @@
     <string name="prefs_e2e_no_device_credentials">Jos haluat näyttää mnemonisen, ota käyttöön laitteen valtuudet.</string>
     <string name="prefs_enable_media_scan_notifications">Näytä mediakartoituksen ilmoitukset</string>
     <string name="prefs_enable_media_scan_notifications_summary">Ilmoita uusista löydetyistä mediakansioista</string>
-    <string name="prefs_feedback">Palaute</string>
     <string name="prefs_gpl_v2">
 GNU yleinen lisenssi, versio 2</string>
     <string name="prefs_help">Ohje</string>
@@ -520,7 +496,6 @@ GNU yleinen lisenssi, versio 2</string>
     <string name="prefs_lock_title">Suojaa sovellus käyttäen</string>
     <string name="prefs_lock_using_device_credentials">Laitteen kirjautumistiedot</string>
     <string name="prefs_lock_using_passcode">Suojakoodi</string>
-    <string name="prefs_log_delete_history_button">Poista historia</string>
     <string name="prefs_manage_accounts">Tilien hallinta</string>
     <string name="prefs_recommend">Suosittele kaverille</string>
     <string name="prefs_show_hidden_files">Näytä piilotetut tiedostot</string>
@@ -528,6 +503,9 @@ GNU yleinen lisenssi, versio 2</string>
     <string name="prefs_storage_path">Tallennustilan polku</string>
     <string name="prefs_synced_folders_local_path_title">Paikallinen kansio</string>
     <string name="prefs_synced_folders_remote_path_title">Etäkansio</string>
+    <string name="prefs_theme_title">Teema</string>
+    <string name="prefs_value_theme_dark">Tumma</string>
+    <string name="prefs_value_theme_light">Vaalea</string>
     <string name="preview_image_description">Kuvan esikatselu</string>
     <string name="preview_image_error_no_local_file">Paikallista tiedostoa ei ole esikatselua varten</string>
     <string name="preview_image_error_unknown_format">Kuvan näyttäminen ei onnistunut</string>
@@ -558,24 +536,14 @@ GNU yleinen lisenssi, versio 2</string>
     <string name="saml_authentication_required_text">Salasana vaaditaan</string>
     <string name="saml_authentication_wrong_pass">Väärä salasana</string>
     <string name="scanQR_description">Kirjaudu QR-koodilla</string>
-    <string name="screenshot_01_gridView">Turvallinen koti kaikille tiedoillesi</string>
     <string name="screenshot_01_gridView_heading">Tietojasi suojaten</string>
-    <string name="screenshot_01_gridView_subline">Itse ylläpidettävä tuottavuusalusta</string>
-    <string name="screenshot_02_listView">Selaa ja jaa tiedostojasi vaivatta</string>
     <string name="screenshot_02_listView_heading">Selaa ja jaa</string>
     <string name="screenshot_02_listView_subline">kaikki toiminnot lähettyvillä</string>
-    <string name="screenshot_03_drawer">Pääsy nopeasti toimiin, jakoihin, yhteydettömän tilan tiedostoihin ja paljon muuhun</string>
-    <string name="screenshot_03_drawer_heading">Toiminnot, jaot ja yhteydettömän tilan tiedostot</string>
     <string name="screenshot_03_drawer_subline">kaikki käytettävissä nopeasti</string>
-    <string name="screenshot_04_accounts">Yhdistä eri tileihin</string>
     <string name="screenshot_04_accounts_heading">Kaikki tilisi</string>
     <string name="screenshot_04_accounts_subline">yhdessä paikassa</string>
-    <string name="screenshot_05_autoUpload">Lähetä kuvat &amp; videot automaattisesti</string>
     <string name="screenshot_05_autoUpload_heading">Automaattinen lähetys</string>
     <string name="screenshot_05_autoUpload_subline">kuvillesi ja videoillesi</string>
-    <string name="screenshot_06_davdroid">Synkronoi kalenteri &amp; yhteystiedot DAVx5 sovellukseen (tunnettu nimellä DAVdroid)</string>
-    <string name="screenshot_06_davdroid_heading">Synkronoi kalenteri ja yhteystiedot</string>
-    <string name="screenshot_06_davdroid_subline">DAVx5:llä (aiemmin DAVdroid)</string>
     <string name="search_users_and_groups_hint">Etsi käyttäjiä ja ryhmiä</string>
     <string name="select_all">Valitse kaikki</string>
     <string name="select_template">Valitse mallipohja</string>
@@ -702,7 +670,6 @@ GNU yleinen lisenssi, versio 2</string>
     <string name="synced_folders_configure_folders">Määritä kansiot</string>
     <string name="synced_folders_loading_folders">Ladataan kansioita…</string>
     <string name="synced_folders_new_info">Heti lähetettävien tiedostojen lähetys on uudistettu täysin. Muuta automaattisen lähetyksen asetuksia päävalikossa vastaamaan nykyistä toimintaa.\n\nNauti uudesta ja monipuolisemmasta toiminnosta.</string>
-    <string name="synced_folders_no_results">Mediakansioita ei löytynyt.</string>
     <string name="synced_folders_preferences">Automaattisen lähetyksen asetukset</string>
     <string name="synced_folders_preferences_folder_path">%1$s varten</string>
     <string name="synced_folders_type">Tyyppi</string>

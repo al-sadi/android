@@ -26,21 +26,16 @@ package com.owncloud.android.ui.fragment;
 
 import android.accounts.Account;
 import android.accounts.AccountManager;
-import android.accounts.AuthenticatorException;
-import android.accounts.OperationCanceledException;
 import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.ServiceConnection;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.IBinder;
 import android.os.Looper;
 import android.text.TextUtils;
 import android.util.Log;
@@ -54,12 +49,14 @@ import android.view.ViewGroup;
 import android.widget.AbsListView;
 import android.widget.PopupMenu;
 import android.widget.Toast;
-import com.nextcloud.client.network.KeepAlive;
 
 import com.google.android.material.snackbar.Snackbar;
+import com.nextcloud.android.lib.richWorkspace.RichWorkspaceDirectEditingRemoteOperation;
+import com.nextcloud.client.account.User;
 import com.nextcloud.client.account.UserAccountManager;
 import com.nextcloud.client.device.DeviceInfo;
 import com.nextcloud.client.di.Injectable;
+import com.nextcloud.client.network.ClientFactory;
 import com.nextcloud.client.preferences.AppPreferences;
 import com.owncloud.android.MainApp;
 import com.owncloud.android.R;
@@ -69,9 +66,8 @@ import com.owncloud.android.datamodel.OCFile;
 import com.owncloud.android.datamodel.VirtualFolderType;
 import com.owncloud.android.files.FileMenuFilter;
 import com.owncloud.android.files.services.FileDownloader;
-import com.owncloud.android.lib.common.OwnCloudAccount;
+import com.owncloud.android.lib.common.Creator;
 import com.owncloud.android.lib.common.OwnCloudClient;
-import com.owncloud.android.lib.common.OwnCloudClientManagerFactory;
 import com.owncloud.android.lib.common.operations.RemoteOperation;
 import com.owncloud.android.lib.common.operations.RemoteOperationResult;
 import com.owncloud.android.lib.common.utils.Log_OC;
@@ -80,21 +76,19 @@ import com.owncloud.android.lib.resources.files.SearchRemoteOperation;
 import com.owncloud.android.lib.resources.files.ToggleFavoriteRemoteOperation;
 import com.owncloud.android.lib.resources.shares.GetSharesRemoteOperation;
 import com.owncloud.android.lib.resources.status.OCCapability;
-import com.owncloud.android.services.OperationsService;
 import com.owncloud.android.ui.activity.FileActivity;
 import com.owncloud.android.ui.activity.FileDisplayActivity;
 import com.owncloud.android.ui.activity.FolderPickerActivity;
 import com.owncloud.android.ui.activity.OnEnforceableRefreshListener;
-import com.owncloud.android.ui.activity.RichDocumentsWebView;
 import com.owncloud.android.ui.activity.ToolbarActivity;
 import com.owncloud.android.ui.activity.UploadFilesActivity;
 import com.owncloud.android.ui.adapter.OCFileListAdapter;
+import com.owncloud.android.ui.dialog.ChooseRichDocumentsTemplateDialogFragment;
 import com.owncloud.android.ui.dialog.ChooseTemplateDialogFragment;
 import com.owncloud.android.ui.dialog.ConfirmationDialogFragment;
 import com.owncloud.android.ui.dialog.CreateFolderDialogFragment;
 import com.owncloud.android.ui.dialog.RemoveFilesDialogFragment;
 import com.owncloud.android.ui.dialog.RenameFileDialogFragment;
-import com.owncloud.android.ui.dialog.SendShareDialog;
 import com.owncloud.android.ui.dialog.SetupEncryptionDialogFragment;
 import com.owncloud.android.ui.events.ChangeMenuEvent;
 import com.owncloud.android.ui.events.CommentsEvent;
@@ -105,7 +99,7 @@ import com.owncloud.android.ui.events.SearchEvent;
 import com.owncloud.android.ui.interfaces.OCFileListFragmentInterface;
 import com.owncloud.android.ui.preview.PreviewImageFragment;
 import com.owncloud.android.ui.preview.PreviewMediaFragment;
-import com.owncloud.android.ui.preview.PreviewTextFragment;
+import com.owncloud.android.ui.preview.PreviewTextFileFragment;
 import com.owncloud.android.utils.DisplayUtils;
 import com.owncloud.android.utils.EncryptionUtils;
 import com.owncloud.android.utils.FileSortOrder;
@@ -122,6 +116,7 @@ import org.parceler.Parcels;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -149,26 +144,42 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
-import java.io.FileInputStream;
-
 import static android.content.Context.MODE_PRIVATE;
 import static com.owncloud.android.datamodel.OCFile.ROOT_PATH;
-import static java.lang.Thread.sleep;
 
 /**
  * A Fragment that lists all files and folders in a given path.
  * TODO refactor to get rid of direct dependency on FileDisplayActivity
  */
-
-
 public class OCFileListFragment extends ExtendedListFragment implements
         OCFileListFragmentInterface,
         OCFileListBottomSheetActions,
         Injectable {
 
-    protected static final String TAG = OCFileListFragment.class.getSimpleName();
+    //UNTIDY Declarations - Start
     public static final String KEY_ACCOUNT = "ACCOUNT"; // By Mohammed
+    String fileName;
     private Account account; // By Mohammed
+    String accountName;
+    private Context mContext;
+    String MatrixName;
+    String MatrixContent;
+    String MasterFileName;
+    String ServerPath;
+    boolean MatrixExist=false;
+    String UNTIDyMatrix = null;
+    JSONObject jo;
+    String JSONaction;
+    String JSONtime;
+    String JSONcontent;
+    ProgressDialog pd1;
+    String AUTHENTICATION_URL = "security/authenticate.php?account=";
+    private DownloadFinishReceiver mDownloadFinishReceiver;
+
+    //UNTIDY Declarations - End
+
+    protected static final String TAG = OCFileListFragment.class.getSimpleName();
+
     private static final String MY_PACKAGE = OCFileListFragment.class.getPackage() != null ?
             OCFileListFragment.class.getPackage().getName() : "com.owncloud.android.ui.fragment";
 
@@ -197,29 +208,9 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
     private static final int SINGLE_SELECTION = 1;
 
-    ProgressDialog pd1;
-    ProgressDialog pd2;
-    ProgressDialog pd3;
-    int count = 0;
-    String UNTIDyMatrix = null;
-    String AUTHENTICATION_URL = "security/authenticate.php?account=";
-    String authenticationResult = null;
-    String MatrixName;
-    String MatrixContent;
-    String accountName;
-    String ServerPath;
-    JSONObject jo;
-    String JSONaction;
-    String JSONtime;
-    String JSONcontent;
-    String MasterFileName;
-    boolean MatrixExist=false;
-    boolean UNTIDyMatrixExist = false;
-    boolean authenticated = false;
-    private Context mContext;
-    public static boolean blockStatus;
     @Inject AppPreferences preferences;
     @Inject UserAccountManager accountManager;
+    @Inject ClientFactory clientFactory;
     protected FileFragment.ContainerActivity mContainerActivity;
 
     protected OCFile mFile;
@@ -242,21 +233,6 @@ public class OCFileListFragment extends ExtendedListFragment implements
     protected AsyncTask remoteOperationAsyncTask;
     protected String mLimitToMimeType;
 
-    //Relevant to the KeepAliveService
-    protected Intent KeepAliveIntent;
-    protected ServiceConnection KeepAliveConnection;
-    protected KeepAlive keepalive;
-    protected boolean isKeepAliveBounded;
-    //Relevant to the OperationsService
-    protected Intent OperationsServiceIntent;
-    protected ServiceConnection OperationsServiceConnection;
-    protected OperationsService operationsService;
-    protected boolean isOperationsServiceBounded;
-    //Relevant to Download finish receiver
-    private DownloadFinishReceiver mDownloadFinishReceiver;
-
-
-
     @Inject DeviceInfo deviceInfo;
 
     protected enum MenuItemAddRemove {
@@ -277,10 +253,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
         mProgressBarActionModeColor = getResources().getColor(R.color.action_mode_background);
         mProgressBarColor = ThemeUtils.primaryColor(getContext());
         mMultiChoiceModeListener = new MultiChoiceModeListener();
-        //UNTIDY
-        KeepAliveIntent = new Intent(getContext(),KeepAlive.class);
 
-        //UNTIDY
         if (savedInstanceState != null) {
             currentSearchType = Parcels.unwrap(savedInstanceState.getParcelable(KEY_CURRENT_SEARCH_TYPE));
             searchEvent = Parcels.unwrap(savedInstanceState.getParcelable(OCFileListFragment.SEARCH_EVENT));
@@ -401,7 +374,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
         mAdapter = new OCFileListAdapter(
             getActivity(),
-            accountManager.getCurrentAccount(),
+            accountManager.getUser(),
             preferences,
             accountManager,
             mContainerActivity,
@@ -432,6 +405,10 @@ public class OCFileListFragment extends ExtendedListFragment implements
         }
 
         setTitle();
+
+        if (searchEvent != null) {
+            onMessageEvent(searchEvent);
+        }
     }
 
     protected void prepareCurrentSearch(SearchEvent event) {
@@ -464,9 +441,11 @@ public class OCFileListFragment extends ExtendedListFragment implements
      */
     private void registerFabListener() {
         FileActivity activity = (FileActivity) getActivity();
-        getFabMain().setOnClickListener(v -> {
-            new OCFileListBottomSheetDialog(activity, this, deviceInfo).show();
-        });
+        getFabMain().setOnClickListener(v -> new OCFileListBottomSheetDialog(activity,
+                                                                             this,
+                                                                             deviceInfo,
+                                                                             accountManager.getUser())
+            .show());
     }
 
     @Override
@@ -532,40 +511,56 @@ public class OCFileListFragment extends ExtendedListFragment implements
     @Override
     public void onOverflowIconClicked(OCFile file, View view) {
         PopupMenu popup = new PopupMenu(getActivity(), view);
-        popup.inflate(R.menu.file_actions_menu);
+        popup.inflate(R.menu.item_file);
         Account currentAccount = ((FileActivity) getActivity()).getAccount();
         FileMenuFilter mf = new FileMenuFilter(mAdapter.getFiles().size(),
                                                Collections.singleton(file),
                                                currentAccount,
                                                mContainerActivity, getActivity(),
-                                               true);
+                                               true,
+                                               deviceInfo,
+                                               accountManager.getUser());
         mf.filter(popup.getMenu(),
                   true,
                   accountManager.isMediaStreamingSupported(currentAccount));
         popup.setOnMenuItemClickListener(item -> {
             Set<OCFile> checkedFiles = new HashSet<>();
             checkedFiles.add(file);
-            return onFileActionChosen(item.getItemId(), checkedFiles);
+            return onFileActionChosen(item, checkedFiles);
         });
         popup.show();
     }
 
     @Override
     public void newDocument() {
-        ChooseTemplateDialogFragment.newInstance(mFile, ChooseTemplateDialogFragment.Type.DOCUMENT)
+        ChooseRichDocumentsTemplateDialogFragment.newInstance(mFile,
+                                                              ChooseRichDocumentsTemplateDialogFragment.Type.DOCUMENT)
                 .show(requireActivity().getSupportFragmentManager(), DIALOG_CREATE_DOCUMENT);
     }
 
     @Override
     public void newSpreadsheet() {
-        ChooseTemplateDialogFragment.newInstance(mFile, ChooseTemplateDialogFragment.Type.SPREADSHEET)
+        ChooseRichDocumentsTemplateDialogFragment.newInstance(mFile,
+                                                              ChooseRichDocumentsTemplateDialogFragment.Type.SPREADSHEET)
                 .show(requireActivity().getSupportFragmentManager(), DIALOG_CREATE_DOCUMENT);
     }
 
     @Override
     public void newPresentation() {
-        ChooseTemplateDialogFragment.newInstance(mFile, ChooseTemplateDialogFragment.Type.PRESENTATION)
+        ChooseRichDocumentsTemplateDialogFragment.newInstance(mFile,
+                                                              ChooseRichDocumentsTemplateDialogFragment.Type.PRESENTATION)
                 .show(requireActivity().getSupportFragmentManager(), DIALOG_CREATE_DOCUMENT);
+    }
+
+    @Override
+    public void onHeaderClicked() {
+        ((FileDisplayActivity) mContainerActivity).startRichWorkspacePreview(getCurrentFile());
+    }
+
+    @Override
+    public void showTemplate(Creator creator) {
+        ChooseTemplateDialogFragment.newInstance(mFile, creator).show(requireActivity().getSupportFragmentManager(),
+                                                                      DIALOG_CREATE_DOCUMENT);
     }
 
     /**
@@ -652,7 +647,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
             mActiveActionMode = mode;
 
             MenuInflater inflater = getActivity().getMenuInflater();
-            inflater.inflate(R.menu.file_actions_menu, menu);
+            inflater.inflate(R.menu.item_file, menu);
             mode.invalidate();
 
             //set gray color
@@ -677,12 +672,14 @@ public class OCFileListFragment extends ExtendedListFragment implements
             mode.setTitle(title);
             Account currentAccount = ((FileActivity) getActivity()).getAccount();
             FileMenuFilter mf = new FileMenuFilter(
-                    mAdapter.getFiles().size(),
-                    checkedFiles,
-                    currentAccount,
-                    mContainerActivity,
-                    getActivity(),
-                    false
+                mAdapter.getFiles().size(),
+                checkedFiles,
+                currentAccount,
+                mContainerActivity,
+                getActivity(),
+                false,
+                deviceInfo,
+                accountManager.getUser()
             );
 
             mf.filter(menu,
@@ -697,7 +694,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
         @Override
         public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
             Set<OCFile> checkedFiles = mAdapter.getCheckedItems();
-            return onFileActionChosen(item.getItemId(), checkedFiles);
+            return onFileActionChosen(item, checkedFiles);
         }
 
         /**
@@ -708,8 +705,11 @@ public class OCFileListFragment extends ExtendedListFragment implements
             mActiveActionMode = null;
 
             // reset to previous color
-            ThemeUtils.colorStatusBar(getActivity(), mSystemBarColor);
-            ThemeUtils.colorToolbarProgressBar(getActivity(), mProgressBarColor);
+            final FragmentActivity activity = getActivity();
+            if (activity != null) {
+                ThemeUtils.colorStatusBar(activity, mSystemBarColor);
+                ThemeUtils.colorToolbarProgressBar(activity, mProgressBarColor);
+            }
 
             // show FAB on multi selection mode exit
             if (!mHideFab && !searchFragment) {
@@ -772,7 +772,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
     }
 
     @Override
-    public void onPrepareOptionsMenu(Menu menu) {
+    public void onPrepareOptionsMenu(@NonNull Menu menu) {
         Menu mMenu = menu;
 
         if (mOriginalMenuItems.size() == 0) {
@@ -789,20 +789,20 @@ public class OCFileListFragment extends ExtendedListFragment implements
             if (menu.findItem(R.id.action_sort) == null) {
                 menuItemOrig = mOriginalMenuItems.get(1);
                 menu.add(menuItemOrig.getGroupId(), menuItemOrig.getItemId(), menuItemOrig.getOrder(),
-                        menuItemOrig.getTitle());
+                         menuItemOrig.getTitle());
             }
 
         } else if (menuItemAddRemoveValue == MenuItemAddRemove.ADD_GRID_AND_SORT) {
             if (menu.findItem(R.id.action_switch_view) == null) {
                 menuItemOrig = mOriginalMenuItems.get(0);
                 menu.add(menuItemOrig.getGroupId(), menuItemOrig.getItemId(), menuItemOrig.getOrder(),
-                        menuItemOrig.getTitle());
+                         menuItemOrig.getTitle());
             }
 
             if (menu.findItem(R.id.action_sort) == null) {
                 menuItemOrig = mOriginalMenuItems.get(1);
                 menu.add(menuItemOrig.getGroupId(), menuItemOrig.getItemId(), menuItemOrig.getOrder(),
-                        menuItemOrig.getTitle());
+                         menuItemOrig.getTitle());
             }
         } else if (menuItemAddRemoveValue == MenuItemAddRemove.REMOVE_SEARCH) {
             menu.removeItem(R.id.action_search);
@@ -810,19 +810,19 @@ public class OCFileListFragment extends ExtendedListFragment implements
             if (menu.findItem(R.id.action_switch_view) == null) {
                 menuItemOrig = mOriginalMenuItems.get(0);
                 menu.add(menuItemOrig.getGroupId(), menuItemOrig.getItemId(), menuItemOrig.getOrder(),
-                        menuItemOrig.getTitle());
+                         menuItemOrig.getTitle());
             }
 
             if (menu.findItem(R.id.action_sort) == null) {
                 menuItemOrig = mOriginalMenuItems.get(1);
                 menu.add(menuItemOrig.getGroupId(), menuItemOrig.getItemId(), menuItemOrig.getOrder(),
-                        menuItemOrig.getTitle());
+                         menuItemOrig.getTitle());
             }
 
             if (menu.findItem(R.id.action_search) == null) {
                 menuItemOrig = mOriginalMenuItems.get(2);
                 menu.add(menuItemOrig.getGroupId(), menuItemOrig.getItemId(), menuItemOrig.getOrder(),
-                        menuItemOrig.getTitle());
+                         menuItemOrig.getTitle());
             }
         } else if (menuItemAddRemoveValue == MenuItemAddRemove.REMOVE_SORT) {
             menu.removeItem(R.id.action_sort);
@@ -832,6 +832,33 @@ public class OCFileListFragment extends ExtendedListFragment implements
             menu.removeItem(R.id.action_switch_view);
             menu.removeItem(R.id.action_search);
         }
+
+        // create rich workspace
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            menu.findItem(R.id.action_create_rich_workspace).setVisible(TextUtils.isEmpty(mFile.getRichWorkspace()));
+        }
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        if (R.id.action_create_rich_workspace == item.getItemId()) {
+            new Thread(() -> {
+                RemoteOperationResult result = new RichWorkspaceDirectEditingRemoteOperation(mFile.getRemotePath())
+                    .execute(accountManager.getUser().toPlatformAccount(), requireContext());
+
+                if (result.isSuccess()) {
+                    String url = (String) result.getSingleData();
+                    mContainerActivity.getFileOperationsHelper().openRichWorkspaceWithTextEditor(mFile,
+                                                                                                 url,
+                                                                                                 requireContext());
+                } else {
+                    DisplayUtils.showSnackMessage(getView(), R.string.failed_to_start_editor);
+                }
+            }).start();
+            return true;
+        }
+
+        return super.onOptionsItemSelected(item);
     }
 
     /**
@@ -994,7 +1021,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
                         }
                     } else if (file.isDown() && MimeTypeUtil.isVCard(file)) {
                         ((FileDisplayActivity) mContainerActivity).startContactListFragment(file);
-                    } else if (PreviewTextFragment.canBePreviewed(file)) {
+                    } else if (PreviewTextFileFragment.canBePreviewed(file)) {
                         ((FileDisplayActivity) mContainerActivity).startTextPreview(file, false);
                     } else if (file.isDown()) {
                         if (PreviewMediaFragment.canBePreviewed(file)) {
@@ -1004,15 +1031,22 @@ public class OCFileListFragment extends ExtendedListFragment implements
                             mContainerActivity.getFileOperationsHelper().openFile(file);
                         }
                     } else {
-                        Account account = accountManager.getCurrentAccount();
-                        OCCapability capability = mContainerActivity.getStorageManager().getCapability(account.name);
+                        // file not downloaded, check for streaming, remote editing
+                        User account = accountManager.getUser();
+                        OCCapability capability = mContainerActivity.getStorageManager()
+                            .getCapability(account.getAccountName());
 
-                        if (PreviewMediaFragment.canBePreviewed(file) && accountManager.getServerVersion(account)
+                        if (PreviewMediaFragment.canBePreviewed(file) && account.getServer().getVersion()
                                 .isMediaStreamingSupported()) {
                             // stream media preview on >= NC14
                             ((FileDisplayActivity) mContainerActivity).startMediaPreview(file, 0, true, true, true);
+                        } else if (FileMenuFilter.isEditorAvailable(requireContext().getContentResolver(),
+                                                                    accountManager.getUser(),
+                                                                    file.getMimeType()) &&
+                            android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                            mContainerActivity.getFileOperationsHelper().openFileWithTextEditor(file, getContext());
                         } else if (capability.getRichDocumentsMimeTypeList().contains(file.getMimeType()) &&
-                            android.os.Build.VERSION.SDK_INT >= RichDocumentsWebView.MINIMUM_API &&
+                            android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP &&
                             capability.getRichDocumentsDirectEditing().isTrue()) {
                             mContainerActivity.getFileOperationsHelper().openFileAsRichDocument(file, getContext());
                         } else {
@@ -1051,11 +1085,11 @@ public class OCFileListFragment extends ExtendedListFragment implements
     /**
      * Start the appropriate action(s) on the currently selected files given menu selected by the user.
      *
-     * @param menuId       Identifier of the action menu selected by the user
+     * @param item       MenuItem selected by the user
      * @param checkedFiles List of files selected by the user on which the action should be performed
      * @return 'true' if the menu selection started any action, 'false' otherwise.
      */
-    public boolean onFileActionChosen(int menuId, Set<OCFile> checkedFiles) {
+    public boolean onFileActionChosen(MenuItem item, Set<OCFile> checkedFiles) {
         if (checkedFiles.isEmpty()) {
             return false;
         }
@@ -1063,7 +1097,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
         if (checkedFiles.size() == SINGLE_SELECTION) {
             /// action only possible on a single file
             OCFile singleFile = checkedFiles.iterator().next();
-            switch (menuId) {
+            switch (item.getItemId()) {
                 case R.id.action_send_share_file: {
                     mContainerActivity.getFileOperationsHelper().sendShareFile(singleFile);
                     return true;
@@ -1076,9 +1110,24 @@ public class OCFileListFragment extends ExtendedListFragment implements
                     mContainerActivity.getFileOperationsHelper().streamMediaFile(singleFile);
                     return true;
                 }
-                case R.id.action_open_file_as_richdocument: {
-                    mContainerActivity.getFileOperationsHelper().openFileAsRichDocument(singleFile, getContext());
-                    return true;
+                case R.id.action_edit: {
+                    // should not be necessary, as menu item is filtered, but better play safe
+                    if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                        if (FileMenuFilter.isEditorAvailable(requireContext().getContentResolver(),
+                                                             accountManager.getUser(),
+                                                             singleFile.getMimeType())) {
+                            mContainerActivity.getFileOperationsHelper().openFileWithTextEditor(singleFile,
+                                                                                                getContext());
+                        } else {
+                            mContainerActivity.getFileOperationsHelper().openFileAsRichDocument(singleFile,
+                                                                                                getContext());
+                        }
+
+                        return true;
+                    } else {
+                        DisplayUtils.showSnackMessage(getView(), "Not supported on older than Android 5");
+                        return false;
+                    }
                 }
                 case R.id.action_rename_file: {
                     RenameFileDialogFragment dialog = RenameFileDialogFragment.newInstance(singleFile);
@@ -1108,7 +1157,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
         }
 
         /// actions possible on a batch of files
-        switch (menuId) {
+        switch (item.getItemId()) {
             case R.id.action_remove_file: {
                 RemoveFilesDialogFragment dialog = RemoveFilesDialogFragment.newInstance(new ArrayList<>(checkedFiles), mActiveActionMode);
                 dialog.show(getFragmentManager(), ConfirmationDialogFragment.FTAG_CONFIRMATION);
@@ -1117,14 +1166,15 @@ public class OCFileListFragment extends ExtendedListFragment implements
             case R.id.action_download_file:
             case R.id.action_sync_file: {
 
-                //UNTIDYA
+
+                //UNTIDy starts here
+                for (OCFile file : checkedFiles) {
+                    fileName=file.getFileName();
+                }
 
                 account = accountManager.getCurrentAccount();
-                accountName = account.name;
+                accountName = account.name; //nextcloud@192.168.100.88/nextcloud
                 mContext = getContext();
-                //if(KeepAliveIntent !=null)
-                //mContext.stopService(KeepAliveIntent);
-                // Listen for download messages
 
                 IntentFilter downloadIntentFilter = new IntentFilter(
                     FileDownloader.getDownloadAddedMessage());
@@ -1132,20 +1182,16 @@ public class OCFileListFragment extends ExtendedListFragment implements
                 mDownloadFinishReceiver = new DownloadFinishReceiver();
                 getActivity().registerReceiver(mDownloadFinishReceiver, downloadIntentFilter);
 
-
-
-
-
-
-
-                MatrixName = accountName.replace("@","/");
+                MatrixName = accountName.replace("@","/"); //nextcloud/192.168.100.88/nextcloud
                 MasterFileName = MatrixName;
-                MasterFileName = MasterFileName.replace("/","_");
+                MasterFileName = MasterFileName.replace("/","_"); //nextcloud_192.168.100.88_nextcloud
                 ServerPath = account.name.substring(account.name.indexOf("@")+1);
                 ServerPath = ServerPath.concat("/");
-                ServerPath = "http://".concat(ServerPath);
+                ServerPath = "http://".concat(ServerPath); //http://192.168.100.88/nextcloud/
                 File file = new File(getContext().getFilesDir(),MasterFileName);
                 if(file.exists()){
+                    //delete master file
+                    //file.delete();
                     MatrixExist=true;
                     Log.i("UNTIDYA", "There is a MasterMatrix");
                 }
@@ -1154,18 +1200,17 @@ public class OCFileListFragment extends ExtendedListFragment implements
                     Log.i("UNTIDYA", "There is no MasterMatrix");
                 }
 
+                //Log.i("untidy", accountName +";"+ MatrixName +";"+MasterFileName +";"+ ServerPath +";"+ MatrixExist);
                 if(!MatrixExist) { // if no UNITDYMatrix were downloaded before
 
 
                     try {
 
                         UNTIDyMatrix = new RegisterUNTIDy().execute(ServerPath+"security/register.php?account=" + accountName + "&status=reset").get();
-                        Log.i("UNTIDYA", "Registeration Reply is: " + UNTIDyMatrix);
                         jo = new JSONObject(UNTIDyMatrix);
                         JSONaction = jo.getString("action");
 
-                        if (JSONaction.contentEquals("download")) {
-                            Log.i("UNTIDYA", "Registeration initial download ");
+                        if (JSONaction.contentEquals("start")) {
                             JSONtime = jo.getString("time");
                             JSONcontent = jo.getString("content");
                             MatrixContent = JSONcontent;
@@ -1175,16 +1220,12 @@ public class OCFileListFragment extends ExtendedListFragment implements
                             FileOutputStream FOS = getActivity().openFileOutput(MasterFileName, MODE_PRIVATE);
                             MatrixName = MatrixName + "/" + JSONtime;
                             MatrixName = MatrixName.replace("/", "_");
-                            Log.i("UNTIDYA", "MatrixName name is: " + MatrixName);
                             FOS.write(MatrixName.getBytes());
                             FOS.close();
                             FOS = getActivity().openFileOutput(MatrixName, MODE_PRIVATE);
                             FOS.write(MatrixContent.getBytes());
                             FOS.close();
-                            new Start().execute(ServerPath+"security/start.php").get();
                             mContainerActivity.getFileOperationsHelper().syncFiles(checkedFiles);
-                            Log.d("UNTIDYA", "The checked files are:" + checkedFiles);
-                            new End().execute(ServerPath+"security/end.php").get();
                             exitSelectionMode();
                             return true;
 
@@ -1207,100 +1248,74 @@ public class OCFileListFragment extends ExtendedListFragment implements
                     MatrixName = accountName.replace("@","/");
                     MatrixName = MatrixName.replace("/","_");
                     MasterFileName = MatrixName;
-
                     try{
-                    FileInputStream FIS = getActivity().openFileInput(MasterFileName);
-                    int c;
-                    String tmp = "";
-                    while((c = FIS.read())!=-1)
-                    {
-                        tmp = tmp + Character.toString((char)c);
-                    }
-                    FIS.close();
-                    UNTIDyMatrixExist=false;
 
-                    MatrixName = tmp;
-                        File file1 = new File(mContext.getFilesDir(), MatrixName);
-                        if (file1.exists() && MatrixName.length()>5) { //enhance this condition to verify UNTIDyMatrixExistance
-
-                            UNTIDyMatrixExist = true;
-                            Log.i("UNTIDYA", "There is a UNTIDyMatrix");
-                            FIS = getActivity().openFileInput(MatrixName);
-                            c = 0;
-                            tmp = "";
-                            while ((c = FIS.read()) != -1) {
-                                tmp = tmp + Character.toString((char) c);
-                            }
-                            FIS.close();
-                            MatrixContent = tmp;
-                            MatrixName = MatrixName.replace("_", "/");
-                            Log.i("UNTIDYA", "Authentication after registeration ");
-                            Log.i("UNTIDYA", "Previosly saved matrix is: " + MatrixContent + " , and the file name is: " + MatrixName);
-                            String result = new Authenticate().execute(ServerPath + AUTHENTICATION_URL + MatrixName + "&matrix=" + MatrixContent).get();
-                            Log.i("UNTIDYA", result);
-                            jo = new JSONObject(result);
-                            JSONaction = jo.getString("action");
-                        }else
+                        int counter;
+                        String temporary = "";
+                        FileInputStream FIS = getActivity().openFileInput(MasterFileName);
+                        while((counter = FIS.read())!=-1)
                         {
-                            UNTIDyMatrixExist = false;
+                            temporary = temporary + Character.toString((char)counter);
                         }
+                        MatrixName = temporary;
+                        FIS = getActivity().openFileInput(MatrixName);
+                        counter=0;
+                        temporary = "";
+                        while((counter = FIS.read())!=-1)
+                        {
+                            temporary = temporary + Character.toString((char)counter);
+                        }
+                        MatrixContent = temporary;
+                        MatrixName = MatrixName.replace("_","/");
+                        Log.i("UNTIDYA", "Previosly saved matrix is: " + MatrixContent + " , and the file name is: " + MatrixName);
+                        String result = new Authenticate().execute(ServerPath+AUTHENTICATION_URL+MatrixName+"&matrix" +
+                                                                       "="+MatrixContent+"&filename="+fileName).get();
+                        Log.i("UNTIDYA", result);
+                        jo = new JSONObject(result);
+                        JSONaction = jo.getString("action");
+                        if(JSONaction.contentEquals("download"))
+                        {
+                            Log.i("UNTIDYA", "secondary download");
+                            JSONtime = jo.getString("time");
+                            JSONcontent = jo.getString("content");
+                            MatrixContent = JSONcontent;
+                            MatrixName = accountName.replace("@","/");
+                            MasterFileName = MatrixName;
+                            MasterFileName = MasterFileName.replace("/","_");
+                            FileOutputStream FOS = getActivity().openFileOutput(MasterFileName,MODE_PRIVATE);
+                            MatrixName = MatrixName + "/" + JSONtime;
+                            MatrixName = MatrixName.replace("/","_");
+                            FOS.write(MatrixName.getBytes());
+                            FOS.close();
+                            FOS = getActivity().openFileOutput(MatrixName,MODE_PRIVATE);
+                            FOS.write(MatrixContent.getBytes());
+                            FOS.close();
 
-                    if(UNTIDyMatrixExist && JSONaction.contentEquals("download"))
-                    {
-                        Log.i("UNTIDYA", "secondary download");
-                        JSONtime = jo.getString("time");
-                        JSONcontent = jo.getString("content");
-                        MatrixContent = JSONcontent;
-                        MatrixName = accountName.replace("@","/");
-                        MasterFileName = MatrixName;
-                        MasterFileName = MasterFileName.replace("/","_");
-                        FileOutputStream FOS = getActivity().openFileOutput(MasterFileName,MODE_PRIVATE);
-                        MatrixName = MatrixName + "/" + JSONtime;
-                        MatrixName = MatrixName.replace("/","_");
-                        FOS.write(MatrixName.getBytes());
-                        FOS.close();
-                        FOS = getActivity().openFileOutput(MatrixName,MODE_PRIVATE);
-                        FOS.write(MatrixContent.getBytes());
-                        FOS.close();
-
-                        //new Start().execute(ServerPath+"security/start.php").get();
-                        mContainerActivity.getFileOperationsHelper().syncFiles(checkedFiles);
-
-                        //test if file downloading
+                            mContainerActivity.getFileOperationsHelper().syncFiles(checkedFiles);
+                            exitSelectionMode();
+                            return true;
 
 
+                        }
+                        else
+                        {
+                            Log.i("UNTIDYA", "Authentication failed");
+                            file.delete();
+                            //delete the master file and everything
+                            //instruct the server to delete the mastricies or move them
 
-                        //  new End().execute(ServerPath+"nextcloud/security/end.php").get();
-
-
-                        //KeepAliveIntent.putExtra("ACCOUNT_NAME", accountName);
-
-                        //mContext.startService(KeepAliveIntent);
-                        //bindKeepAliveService();
-                        exitSelectionMode();
-                        return true;
-
-
-                    }
-                    else
-                    {
-                        Log.i("UNTIDYA", "Authentication failed");
-                        file.delete();
-                        Toast.makeText(getActivity(), "Authentication failed, clear NextCloud account",
-                                       Toast.LENGTH_LONG).show();
-                        AccountManager am = (AccountManager) getActivity().getSystemService(getActivity().ACCOUNT_SERVICE);
-                        account = accountManager.getCurrentAccount();
-                        Log.i("UNTIDYA", "the account name is: " + account.name);
-                        am.removeAccount(account, null, null);
-                        getActivity().finish();
-                        Intent start = new Intent(getActivity(), FileDisplayActivity.class);
-                        start.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                        startActivity(start);
-
-                        //delete the matricies then
-                        //instruct the server to delete the mastricies or move them
-                        return true;
-                    }
+                            Toast.makeText(getActivity(), "Authentication failed, clear NextCloud account",
+                                           Toast.LENGTH_LONG).show();
+                            AccountManager am = (AccountManager) getActivity().getSystemService(getActivity().ACCOUNT_SERVICE);
+                            account = accountManager.getCurrentAccount();
+                            Log.i("UNTIDYA", "the account name is: " + account.name);
+                            am.removeAccount(account, null, null);
+                            getActivity().finish();
+                            Intent start = new Intent(getActivity(), FileDisplayActivity.class);
+                            start.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                            startActivity(start);
+                            return true;
+                        }
 
                     } catch (ExecutionException e) {
                         e.printStackTrace();
@@ -1311,9 +1326,14 @@ public class OCFileListFragment extends ExtendedListFragment implements
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
+
                 }
 
 
+
+                //mContainerActivity.getFileOperationsHelper().syncFiles(checkedFiles);
+                //exitSelectionMode();
+                //return true;
             }
             case R.id.action_cancel_sync: {
                 ((FileDisplayActivity) mContainerActivity).cancelTransference(checkedFiles);
@@ -1322,7 +1342,6 @@ public class OCFileListFragment extends ExtendedListFragment implements
             case R.id.action_favorite: {
                 mContainerActivity.getFileOperationsHelper().toggleFavoriteFiles(checkedFiles, true);
                 return true;
-
             }
             case R.id.action_unset_favorite: {
                 mContainerActivity.getFileOperationsHelper().toggleFavoriteFiles(checkedFiles, false);
@@ -1438,7 +1457,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
                 }
 
                 mAdapter.swapDirectory(
-                    accountManager.getCurrentAccount(),
+                    accountManager.getUser(),
                     directory,
                     storageManager,
                     onlyOnDevice,
@@ -1688,26 +1707,19 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
     @Subscribe(threadMode = ThreadMode.BACKGROUND)
     public void onMessageEvent(FavoriteEvent event) {
-        Account currentAccount = accountManager.getCurrentAccount();
-
-        OwnCloudAccount ocAccount;
-
         try {
-            ocAccount = new OwnCloudAccount(currentAccount, MainApp.getAppContext());
-
-            OwnCloudClient mClient = OwnCloudClientManagerFactory.getDefaultSingleton().
-                    getClientFor(ocAccount, MainApp.getAppContext());
+            User user = accountManager.getUser();
+            OwnCloudClient client = clientFactory.create(user);
 
             ToggleFavoriteRemoteOperation toggleFavoriteOperation = new ToggleFavoriteRemoteOperation(
                 event.shouldFavorite, event.remotePath);
-            RemoteOperationResult remoteOperationResult = toggleFavoriteOperation.execute(mClient);
+            RemoteOperationResult remoteOperationResult = toggleFavoriteOperation.execute(client);
 
             if (remoteOperationResult.isSuccess()) {
                 mAdapter.setFavoriteAttributeForItemID(event.remoteId, event.shouldFavorite);
             }
 
-        } catch (com.owncloud.android.lib.common.accounts.AccountUtils.AccountNotFoundException | AuthenticatorException
-                | IOException | OperationCanceledException e) {
+        } catch (ClientFactory.CreationException e) {
             Log_OC.e(TAG, "Error processing event", e);
         }
     }
@@ -1741,7 +1753,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
         new Handler(Looper.getMainLooper()).post(switchViewsRunnable);
 
-        final Account currentAccount = accountManager.getCurrentAccount();
+        final User currentAccount = accountManager.getUser();
 
         final RemoteOperation remoteOperation;
         if (currentSearchType != SearchType.SHARED_FILTER) {
@@ -1761,7 +1773,8 @@ public class OCFileListFragment extends ExtendedListFragment implements
             protected Object doInBackground(Object[] params) {
                 setTitle();
                 if (getContext() != null && !isCancelled()) {
-                    RemoteOperationResult remoteOperationResult = remoteOperation.execute(currentAccount, getContext());
+                    RemoteOperationResult remoteOperationResult = remoteOperation.execute(
+                        currentAccount.toPlatformAccount(), getContext());
 
                     FileDataStorageManager storageManager = null;
                     if (mContainerActivity != null && mContainerActivity.getStorageManager() != null) {
@@ -1813,18 +1826,12 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
     @Subscribe(threadMode = ThreadMode.BACKGROUND)
     public void onMessageEvent(EncryptionEvent event) {
-        Account currentAccount = accountManager.getCurrentAccount();
-
-        OwnCloudAccount ocAccount;
         try {
-            ocAccount = new OwnCloudAccount(currentAccount, MainApp.getAppContext());
-
-            OwnCloudClient mClient = OwnCloudClientManagerFactory.getDefaultSingleton().
-                    getClientFor(ocAccount, MainApp.getAppContext());
-
-            ToggleEncryptionRemoteOperation toggleEncryptionOperation = new ToggleEncryptionRemoteOperation(
+            final User user = accountManager.getUser();
+            final OwnCloudClient client = clientFactory.create(user);
+            final ToggleEncryptionRemoteOperation toggleEncryptionOperation = new ToggleEncryptionRemoteOperation(
                 event.localId, event.remotePath, event.shouldBeEncrypted);
-            RemoteOperationResult remoteOperationResult = toggleEncryptionOperation.execute(mClient);
+            final RemoteOperationResult remoteOperationResult = toggleEncryptionOperation.execute(client);
 
             if (remoteOperationResult.isSuccess()) {
                 mAdapter.setEncryptionAttributeForItemID(event.remoteId, event.shouldBeEncrypted);
@@ -1834,14 +1841,8 @@ public class OCFileListFragment extends ExtendedListFragment implements
                 Snackbar.make(getRecyclerView(), R.string.common_error_unknown, Snackbar.LENGTH_LONG).show();
             }
 
-        } catch (com.owncloud.android.lib.common.accounts.AccountUtils.AccountNotFoundException e) {
-            Log_OC.e(TAG, "Account not found", e);
-        } catch (AuthenticatorException e) {
-            Log_OC.e(TAG, "Authentication failed", e);
-        } catch (IOException e) {
-            Log_OC.e(TAG, "IO error", e);
-        } catch (OperationCanceledException e) {
-            Log_OC.e(TAG, "Operation has been canceled", e);
+        } catch (ClientFactory.CreationException e) {
+            Log_OC.e(TAG, "Cannot create client", e);
         }
     }
 
@@ -1936,17 +1937,15 @@ public class OCFileListFragment extends ExtendedListFragment implements
             && event.getUnsetType() != null;
     }
 
-
-
-    private class GenerateUNTIDyMatrix extends AsyncTask<String,String,String> {
+    @Override
+    public boolean isLoading() {
+        return false;
+    }
+    private class Authenticate extends AsyncTask<String,String,String> {
 
         protected void onPreExecute() {
             super.onPreExecute();
 
-            pd2 = new ProgressDialog(getActivity());
-            pd2.setMessage("Check UNTIDyMatrix on the server");
-            pd2.setCancelable(false);
-            pd2.show();
 
         }
 
@@ -1954,18 +1953,27 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
 
             HttpURLConnection connection = null;
-
-            int code;
-
+            BufferedReader reader = null;
             try {
+
                 URL url = new URL(params[0]);
                 connection = (HttpURLConnection) url.openConnection();
                 connection.connect();
 
-                code = connection.getResponseCode();
+                InputStream stream = connection.getInputStream();
 
+                reader = new BufferedReader(new InputStreamReader(stream));
 
-                return String.valueOf(code);
+                StringBuffer buffer = new StringBuffer();
+                String line = "";
+
+                while ((line = reader.readLine()) != null) {
+                    buffer.append(line+"\n");
+                    Log.d("UNTIDYA ", "Response  " + line);   //here u ll get whole response...... :-)
+
+                }
+
+                return String.valueOf(buffer.toString());
 
 
             } catch (MalformedURLException e) {
@@ -1978,7 +1986,13 @@ public class OCFileListFragment extends ExtendedListFragment implements
                 if (connection != null) {
                     connection.disconnect();
                 }
-
+                try {
+                    if (reader != null) {
+                        reader.close();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
             return null;
         }
@@ -1986,13 +2000,14 @@ public class OCFileListFragment extends ExtendedListFragment implements
         @Override
         protected void onPostExecute(String result) {
             super.onPostExecute(result);
-            if (pd2.isShowing())
-                pd2.dismiss();
-                Toast.makeText(getActivity(), "UNTIDyMatrix has been generated on the server. It will be downloaded soon",
-                               Toast.LENGTH_LONG).show();
+
+            Toast.makeText(getActivity(), result,
+                           Toast.LENGTH_LONG).show();
+
 
         }
     }
+
     private class RegisterUNTIDy extends AsyncTask<String,String,String> {
 
         protected void onPreExecute() {
@@ -2079,12 +2094,54 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
 
     }
-    private class Authenticate extends AsyncTask<String,String,String> {
+    private class DownloadFinishReceiver extends BroadcastReceiver {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            try {
+                boolean sameAccount = isSameAccount(intent);
+                String downloadedRemotePath = intent.getStringExtra(FileDownloader.EXTRA_REMOTE_PATH);
+                String downloadBehaviour = intent.getStringExtra(OCFileListFragment.DOWNLOAD_BEHAVIOUR);
+
+                Log.i("UNTIDYA", "DownloadFinishReceiver onReceive: great! "+intent.getAction());
+
+                if(intent.getAction().equals(FileDownloader.getDownloadFinishMessage()))
+                {
+                    Log.i("untidy",
+                          "File is done!; Downloaded Remote Path: "+downloadedRemotePath+" ;Behaviour: "+downloadBehaviour);
+                   // bindKeepAliveService();
+                    //open and lock mechanisim
+                }
+                if(intent.getAction().equals(FileDownloader.getDownloadAddedMessage())){
+                   // unbindKeepAliveService();
+                    Log.i("untidy", "New file added!");
+                }
+
+            } finally {
+                if (intent != null) {
+                    getActivity().removeStickyBroadcast(intent);
+                }
+            }
+        }
+
+        private boolean isSameAccount(Intent intent) {
+            //  String accountName = intent.getStringExtra(FileDownloader.ACCOUNT_NAME);
+            //  return accountName != null && mContext.getAccount() != null && accountName.equals(getAccount().name);
+            return true;
+
+
+        }
+        private boolean isFileisDone(Intent intent, String fileName)
+        {
+            Log.i("UNTIDYA", "isFileisDone: "+intent.getStringExtra(FileDownloader.EXTRA_REMOTE_PATH));
+            return true;
+        }
+    }
+
+    private class GetDelays extends AsyncTask<String,String,String> {
 
         protected void onPreExecute() {
             super.onPreExecute();
-
-
         }
 
         protected String doInBackground(String... params) {
@@ -2092,6 +2149,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
             HttpURLConnection connection = null;
             BufferedReader reader = null;
+
             try {
 
                 URL url = new URL(params[0]);
@@ -2107,12 +2165,19 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
                 while ((line = reader.readLine()) != null) {
                     buffer.append(line+"\n");
-                    Log.d("UNTIDYA ", "Response  " + line);   //here u ll get whole response...... :-)
 
                 }
 
-                return String.valueOf(buffer.toString());
+                try
+                {
+                    Thread.sleep( 2 * 1000 );
+                }
+                catch ( InterruptedException e )
+                {
+                    Log.e( "MAINACTIVITY-ERROR", e.getMessage());
 
+                }
+                return buffer.toString();
 
             } catch (MalformedURLException e) {
                 e.printStackTrace();
@@ -2138,241 +2203,13 @@ public class OCFileListFragment extends ExtendedListFragment implements
         @Override
         protected void onPostExecute(String result) {
             super.onPostExecute(result);
-
-                Toast.makeText(getActivity(), result,
-                               Toast.LENGTH_LONG).show();
-
+            Log.i("untidya", "the exchanged time is: "+ result.toString());
+            }
 
         }
-    }
-
-// private class GenerateUNTIDyMatrix extends AsyncTask<String,String,String>
-// private class GetUNTIDyMatrix extends AsyncTask<String,String,String>
-// private class Authenticate extends AsyncTask<String,String,String>
-    private class Start extends AsyncTask<String,String,String> {
-
-    protected void onPreExecute() {
-        super.onPreExecute();
-    }
-
-    protected String doInBackground(String... params) {
-
-
-        HttpURLConnection connection = null;
-        BufferedReader reader = null;
-        try {
-
-            URL url = new URL(params[0]);
-            connection = (HttpURLConnection) url.openConnection();
-            connection.connect();
-
-            InputStream stream = connection.getInputStream();
-
-            reader = new BufferedReader(new InputStreamReader(stream));
-
-            StringBuffer buffer = new StringBuffer();
-            String line = "";
-
-            while ((line = reader.readLine()) != null) {
-                buffer.append(line+"\n");
-                Log.d("UNTIDYA ", "END");   //here u ll get whole response...... :-)
-
-            }
-            return String.valueOf(buffer.toString());
-
-
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
-            Log.i("UNTIDYA","MalformedURLException");
-        } catch (IOException e) {
-            e.printStackTrace();
-            Log.i("UNTIDYA","IOException");
-        } finally {
-            if (connection != null) {
-                connection.disconnect();
-            }
-            try {
-                if (reader != null) {
-                    reader.close();
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-        return null;
-    }
-
-    @Override
-    protected void onPostExecute(String result) {
-        super.onPostExecute(result);
-
-    }
-}
-    private class End extends AsyncTask<String,String,String> {
-
-    protected void onPreExecute() {
-        super.onPreExecute();
-    }
-
-    protected String doInBackground(String... params) {
-
-
-        HttpURLConnection connection = null;
-        BufferedReader reader = null;
-        try {
-
-            URL url = new URL(params[0]);
-            connection = (HttpURLConnection) url.openConnection();
-            connection.connect();
-
-            InputStream stream = connection.getInputStream();
-
-            reader = new BufferedReader(new InputStreamReader(stream));
-
-            StringBuffer buffer = new StringBuffer();
-            String line = "";
-
-            while ((line = reader.readLine()) != null) {
-                buffer.append(line+"\n");
-                Log.d("UNTIDYA ", "END");   //here u ll get whole response...... :-)
-
-            }
-            return String.valueOf(buffer.toString());
-
-
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
-            Log.i("UNTIDYA","MalformedURLException");
-        } catch (IOException e) {
-            e.printStackTrace();
-            Log.i("UNTIDYA","IOException");
-        } finally {
-            if (connection != null) {
-                connection.disconnect();
-            }
-            try {
-                if (reader != null) {
-                    reader.close();
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-        return null;
-    }
-
-    @Override
-    protected void onPostExecute(String result) {
-        super.onPostExecute(result);
-
-    }
-}
-
-
-    @Override
-    public boolean isLoading() {
-        return false;
-    }
-
-
-    private void bindKeepAliveService(){
-        if (KeepAliveConnection == null)
-            KeepAliveConnection = new ServiceConnection() {
-                @Override
-                public void onServiceConnected(ComponentName name, IBinder service) {
-                    KeepAlive.MyServiceBinder myServiceBinder = (KeepAlive.MyServiceBinder) service;
-                    keepalive = myServiceBinder.getService();
-                    isKeepAliveBounded =true;
-                }
-
-                @Override
-                public void onServiceDisconnected(ComponentName name) {
-                    isKeepAliveBounded =false;
-                }
-            };
-        KeepAliveIntent.putExtra("ACCOUNT_NAME", accountName);
-        getActivity().bindService(KeepAliveIntent,KeepAliveConnection, Context.BIND_AUTO_CREATE);
-        Log.i("UNTIDYA", "bindKeepAliveService: "+ "Done successfully");
-    }
-    private void unbindKeepAliveService() {
-        if(isKeepAliveBounded)
-        {
-            getActivity().unbindService(KeepAliveConnection);
-            isKeepAliveBounded =false;
-        }
-    }
-    //OperationsServices
-    private void bindOperationsServicesService(){
-        if (OperationsServiceConnection == null)
-            OperationsServiceConnection = new ServiceConnection() {
-                @Override
-                public void onServiceConnected(ComponentName name, IBinder service) {
-                    OperationsService.OperationsServiceBinder myServiceBinder = (OperationsService.OperationsServiceBinder) service;
-                    //operationsService = myServiceBinder.getService();
-                    isOperationsServiceBounded =true;
-                }
-
-                @Override
-                public void onServiceDisconnected(ComponentName name) {
-                    isOperationsServiceBounded =false;
-                }
-            };
-
-        getActivity().bindService(OperationsServiceIntent,OperationsServiceConnection, Context.BIND_AUTO_CREATE);
-        Log.i("UNTIDYA", "bindOperationsServicesService: "+ "Done successfully");
-    }
-    private void unbindOperationsServicesService() {
-        if(isOperationsServiceBounded)
-        {
-            getActivity().unbindService(OperationsServiceConnection);
-            isOperationsServiceBounded =false;
-        }
-    }
-
-    // Download Finish Broadcast - Part of UNTIDy as well
-
-    private class DownloadFinishReceiver extends BroadcastReceiver {
-
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            try {
-                boolean sameAccount = isSameAccount(intent);
-                String downloadedRemotePath = intent.getStringExtra(FileDownloader.EXTRA_REMOTE_PATH);
-                String downloadBehaviour = intent.getStringExtra(OCFileListFragment.DOWNLOAD_BEHAVIOUR);
-
-                Log.i("UNTIDYA", "DownloadFinishReceiver onReceive: great! "+intent.getAction());
-
-                if(intent.getAction().equals(FileDownloader.getDownloadFinishMessage()))
-                {
-                    bindKeepAliveService();
-                }
-                if(intent.getAction().equals(FileDownloader.getDownloadAddedMessage())){
-                    unbindKeepAliveService();
-                }
-
-            } finally {
-                if (intent != null) {
-                    getActivity().removeStickyBroadcast(intent);
-                }
-            }
-        }
-
-        private boolean isSameAccount(Intent intent) {
-          //  String accountName = intent.getStringExtra(FileDownloader.ACCOUNT_NAME);
-          //  return accountName != null && mContext.getAccount() != null && accountName.equals(getAccount().name);
-        return true;
 
 
     }
-        private boolean isFileisDone(Intent intent, String fileName)
-        {
-            Log.i("UNTIDYA", "isFileisDone: "+intent.getStringExtra(FileDownloader.EXTRA_REMOTE_PATH));
-            return true;
-        }
-    }
-
-}
-
 
 
 

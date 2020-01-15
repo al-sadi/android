@@ -109,6 +109,7 @@ public class NoteDialogFragment extends DialogFragment implements DialogInterfac
 
         // Setup layout
         noteEditText.setText(share.getNote());
+        noteEditText.setHighlightColor(ThemeUtils.primaryColor(getActivity()));
         noteEditText.requestFocus();
         ThemeUtils.colorTextInputLayout(noteEditTextInputLayout, accentColor);
 
@@ -136,8 +137,13 @@ public class NoteDialogFragment extends DialogFragment implements DialogInterfac
             ComponentsGetter componentsGetter = (ComponentsGetter) getActivity();
 
             if (componentsGetter != null) {
-                componentsGetter.getFileOperationsHelper().updateNoteToShare(share,
-                    noteEditText.getText().toString().trim());
+                String note = "";
+
+                if (noteEditText.getText() != null) {
+                    note = noteEditText.getText().toString().trim();
+                }
+
+                componentsGetter.getFileOperationsHelper().updateNoteToShare(share, note);
             } else {
                 DisplayUtils.showSnackMessage(requireActivity(), R.string.note_could_not_sent);
             }

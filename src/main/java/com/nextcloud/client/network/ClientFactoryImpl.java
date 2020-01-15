@@ -27,11 +27,11 @@ import android.app.Activity;
 import android.content.Context;
 import android.net.Uri;
 
+import com.nextcloud.client.account.User;
+import com.nextcloud.common.NextcloudClient;
 import com.owncloud.android.lib.common.OwnCloudClient;
 import com.owncloud.android.lib.common.OwnCloudClientFactory;
 import com.owncloud.android.lib.common.accounts.AccountUtils;
-
-import org.apache.commons.httpclient.HttpClient;
 
 import java.io.IOException;
 
@@ -41,6 +41,30 @@ class ClientFactoryImpl implements ClientFactory {
 
     ClientFactoryImpl(Context context) {
         this.context = context;
+    }
+
+    @Override
+    public OwnCloudClient create(User user) throws CreationException {
+        try {
+            return OwnCloudClientFactory.createOwnCloudClient(user.toPlatformAccount(), context);
+        } catch (OperationCanceledException|
+                 AuthenticatorException|
+                 IOException|
+                 AccountUtils.AccountNotFoundException e) {
+            throw new CreationException(e);
+        }
+    }
+
+    @Override
+    public NextcloudClient createNextcloudClient(User user) throws CreationException {
+        try {
+            return OwnCloudClientFactory.createNextcloudClient(user.toPlatformAccount(), context);
+        } catch (OperationCanceledException |
+            AuthenticatorException |
+            IOException |
+            AccountUtils.AccountNotFoundException e) {
+            throw new CreationException(e);
+        }
     }
 
     @Override
@@ -68,7 +92,7 @@ class ClientFactoryImpl implements ClientFactory {
     }
 
     @Override
-    public HttpClient createPlainClient() {
-        return new HttpClient();
+    public PlainHttpClient createPlainClient() {
+        return new PlainHttpClient();
     }
 }

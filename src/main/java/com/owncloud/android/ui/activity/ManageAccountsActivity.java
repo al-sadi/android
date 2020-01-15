@@ -38,6 +38,7 @@ import android.view.MenuItem;
 
 import com.evernote.android.job.JobRequest;
 import com.evernote.android.job.util.support.PersistableBundleCompat;
+import com.nextcloud.client.account.User;
 import com.nextcloud.client.account.UserAccountManager;
 import com.nextcloud.client.onboarding.FirstRunActivity;
 import com.owncloud.android.MainApp;
@@ -104,6 +105,7 @@ public class ManageAccountsActivity extends FileActivity implements AccountListA
     private Drawable tintedCheck;
 
     private ArbitraryDataProvider arbitraryDataProvider;
+    private boolean multipleAccountsSupported;
 
     @Inject UserAccountManager accountManager;
 
@@ -125,23 +127,22 @@ public class ManageAccountsActivity extends FileActivity implements AccountListA
         Account[] accountList = AccountManager.get(this).getAccountsByType(MainApp.getAccountType(this));
         originalAccounts = DisplayUtils.toAccountNameSet(Arrays.asList(accountList));
 
-        Account currentAccount = getUserAccountManager().getCurrentAccount();
+        Account currentAccount = getAccount();
 
         if (currentAccount != null) {
             originalCurrentAccount = currentAccount.name;
         }
 
-        setAccount(currentAccount);
-        onAccountSet(false);
-
         arbitraryDataProvider = new ArbitraryDataProvider(getContentResolver());
+
+        multipleAccountsSupported = getResources().getBoolean(R.bool.multiaccount_support);
 
         accountListAdapter = new AccountListAdapter(this,
                                                     accountManager,
                                                     getAccountListItems(),
                                                     tintedCheck,
                                                     this,
-                                                    true);
+                                                    multipleAccountsSupported);
 
         recyclerView.setAdapter(accountListAdapter);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -198,11 +199,11 @@ public class ManageAccountsActivity extends FileActivity implements AccountListA
      * @return true if account list has changed, false if not
      */
     private boolean hasCurrentAccountChanged() {
-        Account account = getUserAccountManager().getCurrentAccount();
-        if (account == null) {
+        User account = getUserAccountManager().getUser();
+        if (account.isAnonymous()) {
             return true;
         } else {
-            return !account.name.equals(originalCurrentAccount);
+            return !account.getAccountName().equals(originalCurrentAccount);
         }
     }
 
@@ -284,7 +285,7 @@ public class ManageAccountsActivity extends FileActivity implements AccountListA
                                       getAccountListItems(),
                                       tintedCheck,
                                       this,
-                                      true
+                                      multipleAccountsSupported
                                   );
                                   recyclerView.setAdapter(accountListAdapter);
                                   runOnUiThread(() -> accountListAdapter.notifyDataSetChanged());
@@ -320,7 +321,8 @@ public class ManageAccountsActivity extends FileActivity implements AccountListA
                 }
             }
 
-            if (getUserAccountManager().getCurrentAccount() == null) {
+            User user = getUserAccountManager().getUser();
+            if (user.isAnonymous()) {
                 String accountName = "";
                 Account[] accounts = AccountManager.get(this).getAccountsByType(MainApp.getAccountType(this));
                 if (accounts.length != 0) {
@@ -336,7 +338,8 @@ public class ManageAccountsActivity extends FileActivity implements AccountListA
                                                             accountListItemArray,
                                                             tintedCheck,
                                                             this,
-                                                            true);
+                                                            multipleAccountsSupported
+                );
                 recyclerView.setAdapter(accountListAdapter);
             } else {
                 onBackPressed();

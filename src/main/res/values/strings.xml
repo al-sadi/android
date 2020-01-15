@@ -56,6 +56,11 @@
     <string name="prefs_help">Help</string>
     <string name="prefs_recommend">Recommend to friend</string>
     <string name="prefs_imprint">Imprint</string>
+    <string name="prefs_value_theme_light">Light</string>
+    <string name="prefs_value_theme_dark">Dark</string>
+    <string name="prefs_value_theme_system">Follow system</string>
+    <string name="prefs_theme_title">Theme</string>
+
 
     <string name="recommend_subject">Try %1$s on your device!</string>
     <string name="recommend_text">I want to invite you to use %1$s on your device.\nDownload here: %2$s</string>
@@ -216,17 +221,12 @@
 
     <string name="media_notif_ticker">%1$s music player</string>
     <string name="media_state_playing">%1$s (playing)</string>
-    <string name="media_state_loading">%1$s (loading)</string>
-    <string name="media_event_done">%1$s playback finished</string>
-    <string name="media_err_nothing_to_play">No media file found</string>
-    <string name="media_err_not_in_owncloud">The file is not in a valid account</string>
     <string name="media_err_unsupported">Unsupported media codec</string>
     <string name="media_err_io">Could not read the media file</string>
     <string name="media_err_malformed">The media file has incorrect encoding</string>
     <string name="media_err_timeout">Attempt to play file timed out</string>
     <string name="media_err_invalid_progressive_playback">The media file can not be streamed</string>
     <string name="media_err_unknown">The built-in media player is unable to play the media file</string>
-    <string name="media_err_playing">Unexpected error while trying to play %1$s</string>
     <string name="media_rewind_description">Rewind button</string>
     <string name="media_play_pause_description">Play or pause button</string>
     <string name="media_forward_description">Fast forward button</string>
@@ -555,7 +555,11 @@
     <string name="choose_remote_folder">Choose remote folder…</string>
     <string name="choose_local_folder">Choose local folder…</string>
     <string name="synced_folders_loading_folders">Loading folders…</string>
-    <string name="synced_folders_no_results">No media folders found.</string>
+    <string name="synced_folders_no_results">No media folders found</string>
+    <plurals name="synced_folders_show_hidden_folders">
+        <item quantity="one">Show %1$d hidden folder</item>
+        <item quantity="other">Show %1$d hidden folders</item>
+    </plurals>
     <string name="synced_folders_preferences">Preferences for auto uploading</string>
     <string name="synced_folders_new_info">Instant uploading has been revamped completely. Re-configure your auto upload from within the main menu.\n\nEnjoy the new and extended auto uploading.</string>
     <string name="synced_folders_preferences_folder_path">For %1$s</string>
@@ -628,6 +632,8 @@
     <!-- Auto upload -->
     <string name="autoupload_custom_folder">Set up a custom folder</string>
     <string name="autoupload_create_new_custom_folder">Create new custom folder setup</string>
+    <string name="autoupload_hide_folder">Hide folder</string>
+    <string name="autoupload_configure">Configure</string>
     <string name="synced_folders_configure_folders">Configure folders</string>
 
     <string name="empty" translatable="false" />
@@ -711,12 +717,12 @@
     <string name="account_not_found">Account not found!</string>
 
     <string name="screenshot_01_gridView_heading">Protecting your data</string>
-    <string name="screenshot_01_gridView_subline">self-hosted productivity platform</string>
+    <string name="screenshot_01_gridView_subline">self-hosted productivity</string>
 
     <string name="screenshot_02_listView_heading">Browse and share</string>
     <string name="screenshot_02_listView_subline">all actions at your fingertips</string>
 
-    <string name="screenshot_03_drawer_heading">Activity, shares, offline files</string>
+    <string name="screenshot_03_drawer_heading">Activity, shares, …</string>
     <string name="screenshot_03_drawer_subline">everything quickly accessible</string>
 
     <string name="screenshot_04_accounts_heading">All your accounts</string>
@@ -725,8 +731,8 @@
     <string name="screenshot_05_autoUpload_heading">Automatic upload</string>
     <string name="screenshot_05_autoUpload_subline">for your photos &amp; videos</string>
 
-    <string name="screenshot_06_davdroid_heading">Sync calendar &amp; contacts</string>
-    <string name="screenshot_06_davdroid_subline">with DAVx5 (formerly DAVdroid)</string>
+    <string name="screenshot_06_davdroid_heading">Calendar &amp; contacts</string>
+    <string name="screenshot_06_davdroid_subline">Sync with DAVx5</string>
 
     <string name="userinfo_no_info_headline">No personal info set</string>
     <string name="userinfo_no_info_text">Add name, picture and contact details on your profile page.</string>
@@ -804,7 +810,6 @@
     <string name="stream_not_possible_headline">Internal streaming not possible</string>
     <string name="stream_not_possible_message">Please download media instead or use external app.</string>
     <string name="folder_already_exists">Folder already exists</string>
-    <string name="actionbar_open_as_richdocument_parameter">Open with %1$s</string>
     <string name="notification_icon">Notification icon</string>
     <string name="folder_confirm_create">Create</string>
     <string name="file_delete">Delete</string>
@@ -832,7 +837,6 @@
     <string name="filename_hint">Filename</string>
     <string name="thumbnail">Thumbnail</string>
     <string name="enter_filename">Please enter a filename</string>
-    <string name="create_file_from_template">Creating file from template…</string>
     <string name="error_retrieving_templates">Error retrieving templates</string>
     <string name="battery_optimization_title">Battery optimization</string>
     <string name="battery_optimization_message">Your device may have battery optimization enabled. AutoUpload works only properly if you exclude this app from it.</string>
@@ -869,9 +873,6 @@
     <string name="storage_music">Music</string>
     <string name="storage_documents">Documents</string>
     <string name="storage_downloads">Downloads</string>
-    <string name="io_error">IO error</string>
-    <string name="operation_canceled">Operation has been canceled</string>
-    <string name="authentication_exception">Authentication Exception</string>
     <string name="shared_avatar_desc">Avatar from shared user</string>
     <string name="shared_with_you_by">Shared with you by %1$s</string>
     <string name="reshare_not_allowed">Resharing is not allowed</string>
@@ -879,8 +880,6 @@
     <string name="associated_account_not_found">Associated account not found!</string>
     <string name="error_retrieving_file">Error retrieving file</string>
     <string name="could_not_retrieve_url">Could not retrieve url</string>
-    <string name="copy_internal_link">Copy internal link</string>
-    <string name="copy_internal_link_subline">Only works for users with access to this folder</string>
     <string name="failed_to_download">Failed to pass file to download manager</string>
     <string name="failed_to_print">Failed to print file</string>
     <string name="autoupload_disable_power_save_check">Disable power save check</string>
@@ -900,4 +899,16 @@
     <string name="download_latest_dev_version">Download latest dev version</string>
     <string name="changelog_dev_version">Changelog dev version</string>
     <string name="could_not_download_image">Could not download full image</string>
+    <string name="file_detail_activity_error">Error retrieving activities for file</string>
+    <string name="no_mutliple_accounts_allowed">Only one account allowed</string>
+    <string name="remote_file_fetch_failed">Failed to find file!</string>
+    <string name="share_internal_link_text">Only works for users with access to this %1$s</string>
+    <string name="folder">folder</string>
+    <string name="file">file</string>
+    <string name="share_internal_link">Share internal link</string>
+    <string name="action_edit">Edit</string>
+    <string name="failed_to_start_editor">Failed to start editor</string>
+    <string name="create_rich_workspace">Add folder info</string>
+    <string name="creates_rich_workspace">creates folder info</string>
+    <string name="edit_rich_workspace">edit folder info</string>
 </resources>

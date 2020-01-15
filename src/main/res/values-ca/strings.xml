@@ -8,6 +8,7 @@
     <string name="account_icon">Icona del compte</string>
     <string name="account_not_found">No s\'ha trobat el compte!</string>
     <string name="action_clear_failed_uploads">Neteja les pujades fallides</string>
+    <string name="action_edit">Edita</string>
     <string name="action_empty_notifications">Neteja totes les notificacions</string>
     <string name="action_empty_trashbin">Buida la paperera</string>
     <string name="action_send_share">Envia/Comparteix</string>
@@ -16,7 +17,6 @@
     <string name="actionbar_contacts">Fes una còpia de seguretat dels contactes</string>
     <string name="actionbar_contacts_restore">Restaura els contactes</string>
     <string name="actionbar_copy">Copia</string>
-    <string name="actionbar_logger">Registres</string>
     <string name="actionbar_mkdir">Crea una carpeta</string>
     <string name="actionbar_move">Mou</string>
     <string name="actionbar_open_as_richdocument_parameter">Obre amb %1$s</string>
@@ -77,9 +77,11 @@
     <string name="auto_upload_file_behaviour_kept_in_folder">manté a la carpeta original, ja que és només de lectura</string>
     <string name="auto_upload_on_wifi">Només carrega quan hi hagi Wi-Fi sense límits</string>
     <string name="auto_upload_path">/Càrrega automàtica</string>
+    <string name="autoupload_configure">Configura</string>
     <string name="autoupload_create_new_custom_folder">Creeu la configuració per la nova carpeta personalitzada</string>
     <string name="autoupload_custom_folder">Configureu una carpeta personalitzada</string>
     <string name="autoupload_disable_power_save_check">Desactiva la comprovació d\'estalvi energètic</string>
+    <string name="autoupload_hide_folder">Amaga la carpeta</string>
     <string name="avatar">Avatar</string>
     <string name="battery_optimization_close">Tanca</string>
     <string name="battery_optimization_disable">Desactiva</string>
@@ -216,7 +218,6 @@
     <string name="drawer_item_photos">Fotos</string>
     <string name="drawer_item_recently_added">Afegit recentment</string>
     <string name="drawer_item_recently_modified">Modificat recentment</string>
-    <string name="drawer_item_settings">Paràmetres</string>
     <string name="drawer_item_shared">Compartit</string>
     <string name="drawer_item_trashbin">Fitxers suprimits</string>
     <string name="drawer_item_uploads_list">Fitxers carregats</string>
@@ -225,7 +226,6 @@
     <string name="drawer_manage_accounts">Gestió de comptes</string>
     <string name="drawer_middle_account">Compte mitjà</string>
     <string name="drawer_open">Obre la barra lateral</string>
-    <string name="drawer_participate">Participa</string>
     <string name="drawer_quota">Usats %1$s de %2$s</string>
     <string name="drawer_quota_unlimited">%1$s utilitzat</string>
     <string name="drawer_synced_folders">Càrrega automàtica</string>
@@ -266,8 +266,9 @@
     <string name="fallback_weblogin_text">Revertiu l\'antic mètode d\'inici de sessió</string>
     <string name="favorite">Afegix a preferits</string>
     <string name="favorite_icon">Preferits</string>
-    <string name="feedback_no_mail_app">No hi ha cap aplicació disponible per enviar correus electrònics!</string>
+    <string name="file">arxiu</string>
     <string name="file_delete">Suprimeix</string>
+    <string name="file_detail_activity_error">Hi ha hagut un error mentre es recuperaven les activitats per al fitxer</string>
     <string name="file_details_no_content">No s\'han pogut carregar els detalls</string>
     <string name="file_icon">Fitxer</string>
     <string name="file_keep">Mantén</string>
@@ -335,6 +336,7 @@
     <string name="first_run_2_text">Intercanvi de fitxers &amp; amb coŀlaboració segura</string>
     <string name="first_run_3_text">Correu web, agenda i contactes fàcils de fer servir</string>
     <string name="first_run_4_text">Compartició de pantalles, reunions en línia i conferències web</string>
+    <string name="folder">carpeta</string>
     <string name="folder_already_exists">La carpeta ja existeix</string>
     <string name="folder_confirm_create">Crea</string>
     <string name="folder_icon">Icona de la carpeta</string>
@@ -368,8 +370,6 @@
     <string name="local_file_list_empty">No hi ha fitxers en aquesta carpeta</string>
     <string name="local_file_not_found_message">No s\'ha trobat el fitxer al sistema de fitxers local</string>
     <string name="local_folder_list_empty">No hi ha més carpetes.</string>
-    <string name="log_progress_dialog_text">S\'està carregant dades…</string>
-    <string name="log_send_history_button">Envia l\'historial</string>
     <string name="log_send_mail_subject">%1$s registres de la aplicació d\'Android.</string>
     <string name="log_send_no_mail_app">No s\'ha trobat cap aplicació d\'enviament de registres. Si us plau instal·leu un client de correu electrònic.</string>
     <string name="login">Inici de sessió</string>
@@ -388,18 +388,13 @@
     <string name="media_err_invalid_progressive_playback">El fitxer multimèdia no es pot reproduir</string>
     <string name="media_err_io">No s\'ha pogut llegir el fitxer multimèdia</string>
     <string name="media_err_malformed">El fitxer multimèdia té una codificació incorrecta</string>
-    <string name="media_err_not_in_owncloud">El fitxer no està en un compte vàlid</string>
-    <string name="media_err_nothing_to_play">No s\'han trobat fitxers multimèdia</string>
-    <string name="media_err_playing">Error inesperat mentre s\'intentava reproduir %1$s</string>
     <string name="media_err_timeout">Ha exhaurit el temps d\'espera per reproduir el fitxer</string>
     <string name="media_err_unknown">El reproductor multimèdia integrat no pot reproduir aquest fitxer multimèdia</string>
     <string name="media_err_unsupported">El còdec multimèdia no és compatible</string>
-    <string name="media_event_done">%1$s reproducció acabada</string>
     <string name="media_forward_description">Botó d\'avançament ràpid</string>
     <string name="media_notif_ticker">Reproductor de música %1$s</string>
     <string name="media_play_pause_description">Botó de reproducció o pausa</string>
     <string name="media_rewind_description">Botó de rebobinat</string>
-    <string name="media_state_loading">%1$s (s\'està carregant)</string>
     <string name="media_state_playing">%1$s (està sonant)</string>
     <string name="menu_item_sort_by_date_newest_first">Més recent primer</string>
     <string name="menu_item_sort_by_date_oldest_first">Més antic primer</string>
@@ -423,6 +418,7 @@
     <string name="new_notification">Nova notificació</string>
     <string name="new_version_was_created">S\'ha creat una nova versió</string>
     <string name="no_browser_available">No hi ha cap aplicació disponible per manegar els enllaços</string>
+    <string name="no_mutliple_accounts_allowed">Només es permet un compte.</string>
     <string name="no_pdf_app_available">No hi ha cap aplicació disponible per manegar els PDF</string>
     <string name="note_confirm">Envia</string>
     <string name="note_could_not_sent">No s\'ha pogut enviar la nota</string>
@@ -449,25 +445,6 @@
     <string name="operation_canceled">L\'operació s\'ha cancel·lat</string>
     <string name="outdated_server">El servidor ha arribat al final de la seva vida, si us plau actualitzeu!</string>
     <string name="overflow_menu">Menú més</string>
-    <string name="participate_beta_headline">Proveu la versió en desenvolupament</string>
-    <string name="participate_beta_text">Això inclou totes les futures característiques en un estat incipient. Hi poden haver errors, i si els hi trobeu, si us plau feu-nos-ho saber.</string>
-    <string name="participate_contribute_forum_forum">fòrum</string>
-    <string name="participate_contribute_forum_text">Ajudeu a d\'altres en</string>
-    <string name="participate_contribute_github_text">Reviseu, corregiu i escriviu codi, veieu %1$s per més detalls</string>
-    <string name="participate_contribute_headline">Contribuïu activament</string>
-    <string name="participate_contribute_irc_text">Uniu-vos al xat a l\'IRC:</string>
-    <string name="participate_contribute_translate_text">l\'aplicació</string>
-    <string name="participate_contribute_translate_translate">Traduïu</string>
-    <string name="participate_dev_direct_download">Descarregueu la versió en desenvolupament directament</string>
-    <string name="participate_dev_fdroid">Aconseguiu la versió en desenvolupament des de l\'aplicació F-Droid</string>
-    <string name="participate_rc_fdroid">Aconseguiu la versió candidata des de l\'aplicació F-Droid</string>
-    <string name="participate_rc_play_store">Aconseguiu la versió candidata des de la botiga Google Play</string>
-    <string name="participate_release_candidate_headline">Versió candidata</string>
-    <string name="participate_release_candidate_text">La versió candidata (RC) és una instantània de la propera versió estable que sortirà. Provar-la en el vostre entorn individual podrà ajudar a assegurar-la. Registreu-vos per provar-la a la botiga Google Play o cerqueu-la manualment a la secció \"Versió\" de l\'F-Droid.</string>
-    <string name="participate_testing_bug_text">Heu trobat cap error? Alguna cosa fora del corrent?</string>
-    <string name="participate_testing_headline">Ajudeu provant</string>
-    <string name="participate_testing_report_text">Informeu d\'una incidència a GitHub</string>
-    <string name="participate_testing_version_text">Esteu interessats en provar què hi haurà de nou a la propera versió?</string>
     <string name="pass_code_configure_your_pass_code">Escriviu el vostre codi d\'accés</string>
     <string name="pass_code_configure_your_pass_code_explanation">Es requerirà el codi d\'accés cada vegada que s\'iniciï l\'aplicació</string>
     <string name="pass_code_enter_pass_code">Escriviu el codi d\'accés</string>
@@ -486,7 +463,6 @@
     <string name="placeholder_media_time">12:23:45</string>
     <string name="placeholder_sentence">Això és un marcador de posició</string>
     <string name="placeholder_timestamp">2012/05/18 12:23 PM</string>
-    <string name="power_check_dialog_title">Desactiva la comprovació d\'estalvi energètic</string>
     <string name="power_save_check_dialog_message">Si es desactiva la comprovació d\'estalvi energètic, podria ser que es carreguessin fitxers fins i tot amb nivells baixos de bateria!</string>
     <string name="pref_behaviour_entries_delete_file">suprimit</string>
     <string name="pref_behaviour_entries_keep_file">mantingut a la carpeta original</string>
@@ -507,7 +483,6 @@
     <string name="prefs_e2e_no_device_credentials">Per mostrar els mnemònics, si us plau activeu les credencials del dispositiu.</string>
     <string name="prefs_enable_media_scan_notifications">Mostra notificacions de cerca de mitjans</string>
     <string name="prefs_enable_media_scan_notifications_summary">Notifica sobre noves carpetes amb multimèdia</string>
-    <string name="prefs_feedback">Comentaris</string>
     <string name="prefs_gpl_v2">Llicència Pública General GNU, versió 2</string>
     <string name="prefs_help">Ajuda</string>
     <string name="prefs_imprint">Peu d\'impremta</string>
@@ -523,7 +498,6 @@
     <string name="prefs_lock_title">Protegeix l\'aplicació amb</string>
     <string name="prefs_lock_using_device_credentials">Credencials del dispositiu</string>
     <string name="prefs_lock_using_passcode">Codi d\'accés</string>
-    <string name="prefs_log_delete_history_button">Suprimeix l\'historial</string>
     <string name="prefs_manage_accounts">Gestió de comptes</string>
     <string name="prefs_recommend">Recomana a un amic</string>
     <string name="prefs_show_hidden_files">Mostra els fitxers ocults</string>
@@ -531,6 +505,9 @@
     <string name="prefs_storage_path">Ruta d\'emmagatzematge</string>
     <string name="prefs_synced_folders_local_path_title">Carpeta local</string>
     <string name="prefs_synced_folders_remote_path_title">Carpeta remota</string>
+    <string name="prefs_theme_title">Tema</string>
+    <string name="prefs_value_theme_dark">Fosc</string>
+    <string name="prefs_value_theme_light">Clar</string>
     <string name="preview_image_description">Visualització prèvia d\'imatge</string>
     <string name="preview_image_error_no_local_file">No hi ha cap fitxer local per fer una vista prèvia</string>
     <string name="preview_image_error_unknown_format">No es pot mostrar la imatge</string>
@@ -542,6 +519,7 @@
     <string name="recommend_subject">Proveu %1$s al vostre dispositiu!</string>
     <string name="recommend_text">Us vull convidar a fer servir %1$s al vostre dispositiu.\nDescarregueu-lo d\'aquí: %2$s</string>
     <string name="recommend_urls">%1$s o %2$s</string>
+    <string name="remote_file_fetch_failed">No s\'ha pogut trobar l\'arxiu!</string>
     <string name="remove_fail_msg">No s\'ha pogut completar l\'eliminació</string>
     <string name="remove_notification_failed">Ha fallat la supressió de la notificació.</string>
     <string name="remove_push_notification">Suprimeix</string>
@@ -560,24 +538,17 @@
     <string name="saml_authentication_required_text">Es necessita una contrasenya</string>
     <string name="saml_authentication_wrong_pass">Contrasenya incorrecta</string>
     <string name="scanQR_description">Inicia la sessió via un codi QR</string>
-    <string name="screenshot_01_gridView">Un lloc segur per totes les vostres dades</string>
     <string name="screenshot_01_gridView_heading">Protegint les vostres dades </string>
-    <string name="screenshot_01_gridView_subline">plataforma de productivitat auto-hostatjada</string>
-    <string name="screenshot_02_listView">Navegueu i compartiu els vostres fitxers fàcilment</string>
     <string name="screenshot_02_listView_heading">Explorar i compartir</string>
     <string name="screenshot_02_listView_subline">totes les accions als vostres dits</string>
-    <string name="screenshot_03_drawer">Accediu ràpidament a activitats, comparticions, fitxers fora de línia i més</string>
-    <string name="screenshot_03_drawer_heading">Activitat, comparticions, fitxers fóra de línia </string>
+    <string name="screenshot_03_drawer_heading">Activitat, comparticions, …</string>
     <string name="screenshot_03_drawer_subline">tot molt ràpidament accesible</string>
-    <string name="screenshot_04_accounts">Connecteu a diferents comptes</string>
     <string name="screenshot_04_accounts_heading">Tots els vostres comptes</string>
     <string name="screenshot_04_accounts_subline">En un sol lloc</string>
-    <string name="screenshot_05_autoUpload">Carregueu automàticament les vostres fotos i vídeos</string>
     <string name="screenshot_05_autoUpload_heading">Pujada automàtica</string>
     <string name="screenshot_05_autoUpload_subline">pels vostres vídeos i imatges</string>
-    <string name="screenshot_06_davdroid">Sincronitzeu el calendari i els contactes amb DAVx5 (antigament conegut com a DAVdroid)</string>
-    <string name="screenshot_06_davdroid_heading">Sincronitzar el calendari i els contactes</string>
-    <string name="screenshot_06_davdroid_subline">amb DAVx5 (formalment DAVdroid)</string>
+    <string name="screenshot_06_davdroid_heading">Calendari i contactes</string>
+    <string name="screenshot_06_davdroid_subline">Sincronitza amb DAVx5</string>
     <string name="search_users_and_groups_hint">Cerca usuaris i grups</string>
     <string name="select_all">Selecciona-ho tot</string>
     <string name="select_template">Selecciona una plantilla</string>
@@ -595,6 +566,8 @@
     <string name="share_file">Comparteix %1$s</string>
     <string name="share_get_public_link_button">Obtén l\'enllaç</string>
     <string name="share_group_clarification">%1$s (grup)</string>
+    <string name="share_internal_link">Compartir l\'enllaç intern</string>
+    <string name="share_internal_link_text">Només funciona amb els usuaris que poden accedir a %1$s</string>
     <string name="share_known_remote_clarification">%1$s (a %2$s)</string>
     <string name="share_link_empty_password">Heu d\'escriure una contrasenya</string>
     <string name="share_link_file_error">S\'ha produït un error mentre s\'intentava compartir aquest fitxer o carpeta</string>
@@ -705,7 +678,6 @@
     <string name="synced_folders_configure_folders">Configureu les carpetes</string>
     <string name="synced_folders_loading_folders">S\'està carregant les carpetes…</string>
     <string name="synced_folders_new_info">La càrrega instantània s\'ha renovat completament. Torneu a configurar la vostra càrrega automàtica des de dins del menú principal.\n\nGaudiu de la nova càrrega automàtica amb més funcionalitats.</string>
-    <string name="synced_folders_no_results">No s\'han trobat carpetes amb contingut multimèdia</string>
     <string name="synced_folders_preferences">Preferències de la càrrega automàtica</string>
     <string name="synced_folders_preferences_folder_path">Per %1$s</string>
     <string name="synced_folders_type">Tipus</string>
@@ -833,6 +805,10 @@
     <plurals name="file_list__footer__file">
         <item quantity="one">%1$d fitxer</item>
         <item quantity="other">%1$d fitxers</item>
+    </plurals>
+    <plurals name="synced_folders_show_hidden_folders">
+        <item quantity="one">Mostra %1$d carpeta oculta</item>
+        <item quantity="other">Mostra %1$d carpetes ocultes</item>
     </plurals>
     <plurals name="items_selected_count">
         <item quantity="one">%d seleccionat</item>

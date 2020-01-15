@@ -37,6 +37,7 @@ import android.view.MenuItem;
 import android.view.View;
 
 import com.google.android.material.snackbar.Snackbar;
+import com.nextcloud.client.account.User;
 import com.nextcloud.client.di.Injectable;
 import com.nextcloud.client.preferences.AppPreferences;
 import com.owncloud.android.MainApp;
@@ -183,6 +184,34 @@ public class PreviewImageActivity extends FileActivity implements
     @Override
     public void onStart() {
         super.onStart();
+        if (getAccount() != null) {
+            OCFile file = getFile();
+            /// Validate handled file (first image to preview)
+            if (file == null) {
+                throw new IllegalStateException("Instanced with a NULL OCFile");
+            }
+            if (!MimeTypeUtil.isImage(file)) {
+                throw new IllegalArgumentException("Non-image file passed as argument");
+            }
+
+            // Update file according to DB file, if it is possible
+            if (file.getFileId() > FileDataStorageManager.ROOT_PARENT_ID) {
+                file = getStorageManager().getFileById(file.getFileId());
+            }
+
+            if (file != null) {
+                /// Refresh the activity according to the Account and OCFile set
+                setFile(file);  // reset after getting it fresh from storageManager
+                getSupportActionBar().setTitle(getFile().getFileName());
+                //if (!stateWasRecovered) {
+                initViewPager();
+                //}
+
+            } else {
+                // handled file not in the current Account
+                finish();
+            }
+        }
     }
 
     @Override
@@ -357,12 +386,10 @@ public class PreviewImageActivity extends FileActivity implements
     @SuppressFBWarnings("DLS")
     @Override
     public void showDetails(OCFile file) {
-        final Account currentAccount = getUserAccountManager().getCurrentAccount();
         final Intent showDetailsIntent = new Intent(this, FileDisplayActivity.class);
         showDetailsIntent.setAction(FileDisplayActivity.ACTION_DETAILS);
         showDetailsIntent.putExtra(FileActivity.EXTRA_FILE, file);
-        showDetailsIntent.putExtra(FileActivity.EXTRA_ACCOUNT, currentAccount);
-        showDetailsIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        showDetailsIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
         startActivity(showDetailsIntent);
         finish();
     }
@@ -505,39 +532,6 @@ public class PreviewImageActivity extends FileActivity implements
 
     public void switchToFullScreen() {
         hideSystemUI(mFullScreenAnchorView);
-    }
-
-    @Override
-    protected void onAccountSet(boolean stateWasRecovered) {
-        super.onAccountSet(stateWasRecovered);
-        if (getAccount() != null) {
-            OCFile file = getFile();
-            /// Validate handled file (first image to preview)
-            if (file == null) {
-                throw new IllegalStateException("Instanced with a NULL OCFile");
-            }
-            if (!MimeTypeUtil.isImage(file)) {
-                throw new IllegalArgumentException("Non-image file passed as argument");
-            }
-
-            // Update file according to DB file, if it is possible
-            if (file.getFileId() > FileDataStorageManager.ROOT_PARENT_ID) {
-                file = getStorageManager().getFileById(file.getFileId());
-            }
-
-            if (file != null) {
-                /// Refresh the activity according to the Account and OCFile set
-                setFile(file);  // reset after getting it fresh from storageManager
-                getSupportActionBar().setTitle(getFile().getFileName());
-                //if (!stateWasRecovered) {
-                    initViewPager();
-                //}
-
-            } else {
-                // handled file not in the current Account
-                finish();
-            }
-        }
     }
 
     @Override

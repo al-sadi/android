@@ -43,9 +43,11 @@ import com.evernote.android.job.Job;
 import com.evernote.android.job.JobManager;
 import com.evernote.android.job.JobRequest;
 import com.evernote.android.job.util.support.PersistableBundleCompat;
+import com.nextcloud.client.account.User;
 import com.nextcloud.client.account.UserAccountManager;
 import com.nextcloud.client.device.PowerManagementService;
 import com.nextcloud.client.network.ConnectivityService;
+import com.nextcloud.java.util.Optional;
 import com.owncloud.android.R;
 import com.owncloud.android.datamodel.UploadsStorageManager;
 import com.owncloud.android.files.services.FileUploader;
@@ -227,6 +229,16 @@ public class UploadListActivity extends FileActivity {
     }
 
     @Override
+    protected void onStart() {
+        super.onStart();
+        ThemeUtils.setColoredTitle(getSupportActionBar(), R.string.uploads_view_title, this);
+        final Optional<User> optionalUser = getUser();
+        if (optionalUser.isPresent()) {
+            setAccountInDrawer(optionalUser.get());
+        }
+    }
+
+    @Override
     protected void onResume() {
         Log_OC.v(TAG, "onResume() start");
         super.onResume();
@@ -259,7 +271,7 @@ public class UploadListActivity extends FileActivity {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
-        inflater.inflate(R.menu.upload_list_menu, menu);
+        inflater.inflate(R.menu.activity_upload_list, menu);
 
         return true;
     }
@@ -379,20 +391,6 @@ public class UploadListActivity extends FileActivity {
                 }
             }
 
-        }
-    }
-
-    /**
-     * Called when the ownCloud {@link Account} associated to the Activity was just updated.
-     */
-    @Override
-    protected void onAccountSet(boolean stateWasRecovered) {
-        super.onAccountSet(stateWasRecovered);
-
-        ThemeUtils.setColoredTitle(getSupportActionBar(), R.string.uploads_view_title, this);
-
-        if (mAccountWasSet) {
-            setAccountInDrawer(getAccount());
         }
     }
 

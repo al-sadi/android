@@ -158,21 +158,32 @@ public final class FileStorageUtils {
     /**
      * Returns the InstantUploadFilePath on the nextcloud instance
      *
-     * @param fileName complete file name
      * @param dateTaken: Time in milliseconds since 1970 when the picture was taken.
      * @return instantUpload path, eg. /Camera/2017/01/fileName
      */
-    public static String getInstantUploadFilePath(Locale current,
+    public static String getInstantUploadFilePath(File file,
+                                                  Locale current,
                                                   String remotePath,
-                                                  String fileName,
+                                                  String syncedFolderLocalPath,
                                                   long dateTaken,
                                                   Boolean subfolderByDate) {
-        String subPath = "";
+        String subfolderByDatePath = "";
         if (subfolderByDate) {
-            subPath = getSubPathFromDate(dateTaken, current);
+            subfolderByDatePath = getSubPathFromDate(dateTaken, current);
         }
 
-        return remotePath + OCFile.PATH_SEPARATOR + subPath + (fileName == null ? "" : fileName);
+        String relativeSubfolderPath = new File(file.getAbsolutePath().replace(syncedFolderLocalPath, ""))
+            .getParentFile().getAbsolutePath();
+
+        // Path must be normalized; otherwise the next RefreshFolderOperation has a mismatch and deletes the local file.
+        return (remotePath +
+            OCFile.PATH_SEPARATOR +
+            subfolderByDatePath +
+            OCFile.PATH_SEPARATOR +
+            relativeSubfolderPath +
+            OCFile.PATH_SEPARATOR +
+            file.getName())
+            .replaceAll(OCFile.PATH_SEPARATOR + "+", OCFile.PATH_SEPARATOR);
     }
 
 
@@ -212,6 +223,7 @@ public final class FileStorageUtils {
         file.setOwnerDisplayName(remote.getOwnerDisplayName());
         file.setNote(remote.getNote());
         file.setSharees(new ArrayList<>(Arrays.asList(remote.getSharees())));
+        file.setRichWorkspace(remote.getRichWorkspace());
 
         return file;
     }

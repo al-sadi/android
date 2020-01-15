@@ -37,7 +37,9 @@ import com.owncloud.android.utils.ThemeUtils;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.annotation.Nullable;
 
@@ -51,11 +53,11 @@ public final class MediaProvider {
     private static final Uri IMAGES_MEDIA_URI = android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
     private static final String[] FILE_PROJECTION = new String[]{MediaStore.MediaColumns.DATA};
     private static final String IMAGES_FILE_SELECTION = MediaStore.Images.Media.BUCKET_ID + "=";
-    private static final String[] IMAGES_FOLDER_PROJECTION = {"Distinct " + MediaStore.Images.Media.BUCKET_ID,
+    private static final String[] IMAGES_FOLDER_PROJECTION = {MediaStore.Images.Media.BUCKET_ID,
             MediaStore.Images.Media.BUCKET_DISPLAY_NAME};
     private static final String IMAGES_FOLDER_SORT_ORDER = MediaStore.Images.Media.BUCKET_DISPLAY_NAME + " ASC";
 
-    private static final String[] VIDEOS_FOLDER_PROJECTION = {"Distinct " + MediaStore.Video.Media.BUCKET_ID,
+    private static final String[] VIDEOS_FOLDER_PROJECTION = {MediaStore.Video.Media.BUCKET_ID,
             MediaStore.Video.Media.BUCKET_DISPLAY_NAME};
 
     private MediaProvider() {
@@ -86,28 +88,35 @@ public final class MediaProvider {
         String dataPath = MainApp.getStoragePath() + File.separator + MainApp.getDataFolder();
 
         if (cursorFolders != null) {
-            String folderName;
             String fileSortOrder = MediaStore.Images.Media.DATE_TAKEN + " DESC LIMIT " + itemLimit;
             Cursor cursorImages;
 
-            while (cursorFolders.moveToNext()) {
-                String folderId = cursorFolders.getString(cursorFolders.getColumnIndex(MediaStore.Images.Media
-                        .BUCKET_ID));
+            Map<String, String> uniqueFolders = new HashMap<>();
 
+            // since sdk 29 we have to manually distinct on bucket id
+            while (cursorFolders.moveToNext()) {
+                uniqueFolders.put(cursorFolders.getString(
+                    cursorFolders.getColumnIndex(MediaStore.Images.Media.BUCKET_ID)),
+                                  cursorFolders.getString(
+                                      cursorFolders.getColumnIndex(MediaStore.Images.Media.BUCKET_DISPLAY_NAME))
+                );
+            }
+            cursorFolders.close();
+
+            for (Map.Entry<String, String> folder : uniqueFolders.entrySet()) {
                 MediaFolder mediaFolder = new MediaFolder();
-                folderName = cursorFolders.getString(cursorFolders.getColumnIndex(
-                        MediaStore.Images.Media.BUCKET_DISPLAY_NAME));
+
                 mediaFolder.type = MediaFolderType.IMAGE;
-                mediaFolder.folderName = folderName;
+                mediaFolder.folderName = folder.getValue();
                 mediaFolder.filePaths = new ArrayList<>();
 
                 // query images
                 cursorImages = contentResolver.query(
-                        IMAGES_MEDIA_URI,
-                        FILE_PROJECTION,
-                        IMAGES_FILE_SELECTION + folderId,
-                        null,
-                        fileSortOrder
+                    IMAGES_MEDIA_URI,
+                    FILE_PROJECTION,
+                    IMAGES_FILE_SELECTION + folder.getKey(),
+                    null,
+                    fileSortOrder
                 );
                 Log.d(TAG, "Reading images for " + mediaFolder.folderName);
 
@@ -116,10 +125,10 @@ public final class MediaProvider {
 
                     while (cursorImages.moveToNext()) {
                         filePath = cursorImages.getString(cursorImages.getColumnIndexOrThrow(
-                                MediaStore.MediaColumns.DATA));
+                            MediaStore.MediaColumns.DATA));
 
                         // check if valid path and file exists
-                        if (filePath != null && filePath.lastIndexOf('/') > 0 && new File(filePath).exists()) {
+                        if (isValidAndExistingFilePath(filePath)) {
                             mediaFolder.filePaths.add(filePath);
                             mediaFolder.absolutePath = filePath.substring(0, filePath.lastIndexOf('/'));
                         }
@@ -127,15 +136,15 @@ public final class MediaProvider {
                     cursorImages.close();
 
                     // only do further work if folder is not within the Nextcloud app itself
-                    if (mediaFolder.absolutePath != null && !mediaFolder.absolutePath.startsWith(dataPath)) {
+                    if (isFolderOutsideOfAppPath(dataPath, mediaFolder)) {
 
                         // count images
                         Cursor count = contentResolver.query(
-                                IMAGES_MEDIA_URI,
-                                FILE_PROJECTION,
-                                IMAGES_FILE_SELECTION + folderId,
-                                null,
-                                null);
+                            IMAGES_MEDIA_URI,
+                            FILE_PROJECTION,
+                            IMAGES_FILE_SELECTION + folder.getKey(),
+                            null,
+                            null);
 
                         if (count != null) {
                             mediaFolder.numberOfFiles = count.getCount();
@@ -146,10 +155,17 @@ public final class MediaProvider {
                     }
                 }
             }
-            cursorFolders.close();
         }
 
         return mediaFolders;
+    }
+
+    private static boolean isFolderOutsideOfAppPath(String dataPath, MediaFolder mediaFolder) {
+        return mediaFolder.absolutePath != null && !mediaFolder.absolutePath.startsWith(dataPath);
+    }
+
+    private static boolean isValidAndExistingFilePath(String filePath) {
+        return filePath != null && filePath.lastIndexOf('/') > 0 && new File(filePath).exists();
     }
 
     private static void checkPermissions(@Nullable Activity activity) {
@@ -195,31 +211,38 @@ public final class MediaProvider {
             String fileSortOrder = MediaStore.Video.Media.DATE_TAKEN + " DESC LIMIT " + itemLimit;
             Cursor cursorVideos;
 
-            while (cursorFolders.moveToNext()) {
-                String folderId = cursorFolders.getString(cursorFolders.getColumnIndex(MediaStore.Video.Media
-                        .BUCKET_ID));
+            Map<String, String> uniqueFolders = new HashMap<>();
 
+            // since sdk 29 we have to manually distinct on bucket id
+            while (cursorFolders.moveToNext()) {
+                uniqueFolders.put(cursorFolders.getString(
+                    cursorFolders.getColumnIndex(MediaStore.Video.Media.BUCKET_ID)),
+                                  cursorFolders.getString(
+                                      cursorFolders.getColumnIndex(MediaStore.Video.Media.BUCKET_DISPLAY_NAME))
+                );
+            }
+            cursorFolders.close();
+
+            for (Map.Entry<String, String> folder : uniqueFolders.entrySet()) {
                 MediaFolder mediaFolder = new MediaFolder();
-                folderName = cursorFolders.getString(cursorFolders.getColumnIndex(
-                        MediaStore.Video.Media.BUCKET_DISPLAY_NAME));
                 mediaFolder.type = MediaFolderType.VIDEO;
-                mediaFolder.folderName = folderName;
+                mediaFolder.folderName = folder.getValue();
                 mediaFolder.filePaths = new ArrayList<>();
 
                 // query videos
                 cursorVideos = contentResolver.query(
-                        MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-                        FILE_PROJECTION,
-                        MediaStore.Video.Media.BUCKET_ID + "=" + folderId,
-                        null,
-                        fileSortOrder);
+                    MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                    FILE_PROJECTION,
+                    MediaStore.Video.Media.BUCKET_ID + "=" + folder.getKey(),
+                    null,
+                    fileSortOrder);
                 Log.d(TAG, "Reading videos for " + mediaFolder.folderName);
 
                 if (cursorVideos != null) {
                     String filePath;
                     while (cursorVideos.moveToNext()) {
                         filePath = cursorVideos.getString(cursorVideos.getColumnIndexOrThrow(
-                                MediaStore.MediaColumns.DATA));
+                            MediaStore.MediaColumns.DATA));
 
                         if (filePath != null) {
                             mediaFolder.filePaths.add(filePath);
@@ -229,15 +252,15 @@ public final class MediaProvider {
                     cursorVideos.close();
 
                     // only do further work if folder is not within the Nextcloud app itself
-                    if (mediaFolder.absolutePath != null && !mediaFolder.absolutePath.startsWith(dataPath)) {
+                    if (isFolderOutsideOfAppPath(dataPath, mediaFolder)) {
 
                         // count images
                         Cursor count = contentResolver.query(
-                                MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-                                FILE_PROJECTION,
-                                MediaStore.Video.Media.BUCKET_ID + "=" + folderId,
-                                null,
-                                null);
+                            MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                            FILE_PROJECTION,
+                            MediaStore.Video.Media.BUCKET_ID + "=" + folder.getKey(),
+                            null,
+                            null);
 
                         if (count != null) {
                             mediaFolder.numberOfFiles = count.getCount();

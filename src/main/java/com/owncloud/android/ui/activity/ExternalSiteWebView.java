@@ -65,7 +65,6 @@ public class ExternalSiteWebView extends FileActivity {
     private boolean showSidebar;
     String url;
 
-    @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         Log_OC.v(TAG, "onCreate() start");
@@ -92,7 +91,7 @@ public class ExternalSiteWebView extends FileActivity {
         webview.setFocusable(true);
         webview.setFocusableInTouchMode(true);
         webview.setClickable(true);
-
+//        webview.addJavascriptInterface(new TestMobileInterface(), "RichDocumentsMobileInterface");
 
         // allow debugging (when building the debug version); see details in
         // https://developers.google.com/web/tools/chrome-devtools/remote-debugging/webviews
@@ -114,39 +113,8 @@ public class ExternalSiteWebView extends FileActivity {
             setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED);
         }
 
-        ActionBar actionBar = getSupportActionBar();
-        if (actionBar != null) {
-            ThemeUtils.setColoredTitle(actionBar, title, this);
-
-            if (showSidebar) {
-                actionBar.setDisplayHomeAsUpEnabled(true);
-            } else {
-                setDrawerIndicatorEnabled(false);
-            }
-        }
-
-        // enable zoom
-        webSettings.setSupportZoom(true);
-        webSettings.setBuiltInZoomControls(true);
-        webSettings.setDisplayZoomControls(false);
-
-        // Non-responsive webs are zoomed out when loaded
-        webSettings.setUseWideViewPort(true);
-        webSettings.setLoadWithOverviewMode(true);
-
-        // user agent
-        webSettings.setUserAgentString(MainApp.getUserAgent());
-
-        // no private data storing
-        webSettings.setSavePassword(false);
-        webSettings.setSaveFormData(false);
-
-        // disable local file access
-        webSettings.setAllowFileAccess(false);
-
-        // enable javascript
-        webSettings.setJavaScriptEnabled(true);
-        webSettings.setDomStorageEnabled(true);
+        setupActionBar(title);
+        setupWebSettings(webSettings);
 
         final ProgressBar progressBar = findViewById(R.id.progressBar);
 
@@ -170,6 +138,51 @@ public class ExternalSiteWebView extends FileActivity {
         });
 
         webview.loadUrl(url);
+    }
+
+    @SuppressLint("SetJavaScriptEnabled")
+    private void setupWebSettings(WebSettings webSettings) {
+        // enable zoom
+        webSettings.setSupportZoom(true);
+        webSettings.setBuiltInZoomControls(true);
+        webSettings.setDisplayZoomControls(false);
+
+        // Non-responsive webs are zoomed out when loaded
+        webSettings.setUseWideViewPort(true);
+        webSettings.setLoadWithOverviewMode(true);
+
+        // user agent
+        webSettings.setUserAgentString(MainApp.getUserAgent());
+
+        // no private data storing
+        webSettings.setSavePassword(false);
+        webSettings.setSaveFormData(false);
+
+        // disable local file access
+        webSettings.setAllowFileAccess(false);
+
+        // enable javascript
+        webSettings.setJavaScriptEnabled(true);
+        webSettings.setDomStorageEnabled(true);
+
+        // caching disabled in debug mode
+        if ((getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) == 0) {
+            webSettings.setAppCacheEnabled(true);
+            webSettings.setAppCachePath(getCacheDir().getPath());
+        }
+    }
+
+    private void setupActionBar(String title) {
+        ActionBar actionBar = getSupportActionBar();
+        if (actionBar != null) {
+            ThemeUtils.setColoredTitle(actionBar, title, this);
+
+            if (showSidebar) {
+                actionBar.setDisplayHomeAsUpEnabled(true);
+            } else {
+                setDrawerIndicatorEnabled(false);
+            }
+        }
     }
 
     @Override

@@ -19,28 +19,29 @@
 
 package com.owncloud.android.ui.activity;
 
-import android.accounts.Account;
 import android.accounts.AuthenticatorException;
 import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.res.ColorStateList;
 import android.content.res.Resources.NotFoundException;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Parcelable;
 import android.util.Log;
+import android.view.ActionMode;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
-import android.widget.Button;
 
 import com.nextcloud.client.di.Injectable;
 import com.nextcloud.client.preferences.AppPreferences;
+import com.google.android.material.button.MaterialButton;
 import com.owncloud.android.R;
 import com.owncloud.android.datamodel.OCFile;
 import com.owncloud.android.lib.common.operations.RemoteOperation;
@@ -90,8 +91,8 @@ public class FolderPickerActivity extends FileActivity implements FileFragment.C
     private boolean mSearchOnlyFolders;
     private boolean mDoNotEnterEncryptedFolder;
 
-    protected Button mCancelBtn;
-    protected Button mChooseBtn;
+    protected MaterialButton mCancelBtn;
+    protected MaterialButton mChooseBtn;
     private String caption;
     @Inject AppPreferences preferences;
 
@@ -155,16 +156,8 @@ public class FolderPickerActivity extends FileActivity implements FileFragment.C
     }
 
     @Override
-    protected void onStart() {
-        super.onStart();
-    }
-
-    /**
-     * Called when the ownCloud {@link Account} associated to the Activity was just updated.
-     */
-    @Override
-    protected void onAccountSet(boolean stateWasRecovered) {
-        super.onAccountSet(stateWasRecovered);
+    public void onActionModeStarted(ActionMode mode) {
+        super.onActionModeStarted(mode);
         if (getAccount() != null) {
 
             updateFileFromDB();
@@ -176,12 +169,9 @@ public class FolderPickerActivity extends FileActivity implements FileFragment.C
                 folder = getFile();
             }
 
-            if (!stateWasRecovered) {
-                OCFileListFragment listOfFolders = getListOfFilesFragment();
-                listOfFolders.listDirectory(folder, false, false);
-
-                startSyncFolderOperation(folder, false);
-            }
+            OCFileListFragment listOfFolders = getListOfFilesFragment();
+            listOfFolders.listDirectory(folder, false, false);
+            startSyncFolderOperation(folder, false);
 
             updateNavigationElementsInActionBar();
         }
@@ -303,11 +293,7 @@ public class FolderPickerActivity extends FileActivity implements FileFragment.C
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
-        inflater.inflate(R.menu.main_menu, menu);
-        menu.findItem(R.id.action_switch_view).setVisible(false);
-        menu.findItem(R.id.action_sync_account).setVisible(false);
-        menu.findItem(R.id.action_select_all).setVisible(false);
-        // menu.findItem(R.id.action_sort).setVisible(false);
+        inflater.inflate(R.menu.activity_folder_picker, menu);
         return true;
     }
 
@@ -416,7 +402,8 @@ public class FolderPickerActivity extends FileActivity implements FileFragment.C
         mChooseBtn = findViewById(R.id.folder_picker_btn_choose);
 
         if (mChooseBtn != null) {
-            mChooseBtn.getBackground().setColorFilter(ThemeUtils.primaryColor(this, true), PorterDuff.Mode.SRC_ATOP);
+            mChooseBtn.setBackgroundTintMode(PorterDuff.Mode.SRC_ATOP);
+            mChooseBtn.setBackgroundTintList(ColorStateList.valueOf(ThemeUtils.primaryColor(this, true)));
             mChooseBtn.setOnClickListener(this);
         }
 

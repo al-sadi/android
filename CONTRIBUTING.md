@@ -23,6 +23,8 @@
         1. Backport pull request
         1. Pull requests that also need changes on library
         1. Adding new files
+	1. File naming
+        1. Menu files
     1. Translations
 1. Releases
     1. Types
@@ -122,7 +124,7 @@ There are three build variants
 ### 2. Create pull request:
 * Commit your changes locally: ```git commit -a```
 * Push your changes to your GitHub repo: ```git push```
-* Browse to https://github.com/YOURGITHUBNAME/android/pulls and issue pull request
+* Browse to <https://github.com/YOURGITHUBNAME/android/pulls> and issue pull request
 * Enter description and send pull request.
 
 
@@ -236,6 +238,24 @@ Source code of app:
 -->
 ```
 
+## File naming
+
+The file naming patterns are inspired and based on [Ribot's Android Project And Code Guidelines](https://github.com/ribot/android-guidelines/blob/c1d8c9c904eb31bf01fe24aadb963b74281fe79a/project_and_code_guidelines.md).
+
+### Menu files
+
+Similar to layout files, menu files should match the name of the component. For example, if we are defining a menu file that is going to be used in the `UserProfileActivity`, then the name of the file should be `activity_user_profile.xml`. Same pattern applies for menus used in adapter view items, dialogs, etc.
+
+| Component        | Class Name             | Menu Name                   |
+| ---------------- | ---------------------- | ----------------------------- |
+| Activity         | `UserProfileActivity`  | `activity_user_profile.xml`   |
+| Fragment         | `SignUpFragment`       | `fragment_sign_up.xml`        |
+| Dialog           | `ChangePasswordDialog` | `dialog_change_password.xml`  |
+| AdapterView item | ---                    | `item_person.xml`             |
+| Partial layout   | ---                    | `partial_stats_bar.xml`       | 
+
+A good practice is to not include the word `menu` as part of the name because these files are already located in the `menu` directory. In case a component uses several menus in different places (via popup menus) then the resource name would be extended. For example, if the user profile activity has two popup menus for configuring the users settings and one for the handling group assignments then the file names for the menus would be: `activity_user_profile_user_settings.xml` and `activity_user_profile_group_assignments.xml`.
+
 ## Translations
 We manage translations via [Transifex](https://www.transifex.com/nextcloud/nextcloud/android/). So just request joining the translation team for Android on the site and start translating. All translations will then be automatically pushed to this repository, there is no need for any pull request for translations.
 
@@ -294,7 +314,9 @@ For dev the version name is in format YYYYMMDD. It is mainly as a reference for 
 * after feature freeze a public release candidate on play store and f-droid is released
 * ~2 weeks testing, bug fixing
 * release final version on f-droid and play store
-* Bugfix releases (dot releases, e.g. 3.2.1) are released on demand from the branch created with first stable release (stable-3.2.x). If changes to the library are required, we do the same: create a branch from the version used in stable release (e.g. 1.1.0) and then release a dot release (1.1.1).
+* Bugfix releases (dot releases, e.g. 3.2.1) are released 4 weeks after stable version from the branch created with first stable release (stable-3.2.x). If changes to the library are required, we do the same: create a branch from the version used in stable release (e.g. 1.1.0) and then release a dot release (1.1.1).
+
+> Hotfixes as well as security fixes are released via bugfix releases (dot releases) but are released on demand in contrast to regular, scheduled bugfix releases.
 
 To get an idea which PRs and issues will be part of the next release simply check our [milestone plan](https://github.com/nextcloud/android/milestones)
 
