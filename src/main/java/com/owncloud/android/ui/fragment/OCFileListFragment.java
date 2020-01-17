@@ -117,6 +117,7 @@ import org.parceler.Parcels;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -175,6 +176,8 @@ public class OCFileListFragment extends ExtendedListFragment implements
     ProgressDialog pd1;
     String AUTHENTICATION_URL = "security/authenticate.php?account=";
     private DownloadFinishReceiver mDownloadFinishReceiver;
+    boolean reset=false;
+    boolean firstTime=true;
 
     //UNTIDY Declarations - End
 
@@ -1168,6 +1171,16 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
 
                 //UNTIDy starts here
+                if(firstTime)
+                {
+                    IntentFilter downloadIntentFilter = new IntentFilter(
+                        FileDownloader.getDownloadAddedMessage());
+                    downloadIntentFilter.addAction(FileDownloader.getDownloadFinishMessage());
+                    mDownloadFinishReceiver = new DownloadFinishReceiver();
+                    getActivity().registerReceiver(mDownloadFinishReceiver, downloadIntentFilter);
+                    firstTime=false;
+                }
+
                 for (OCFile file : checkedFiles) {
                     fileName=file.getFileName();
                 }
@@ -1176,11 +1189,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
                 accountName = account.name; //nextcloud@192.168.100.88/nextcloud
                 mContext = getContext();
 
-                IntentFilter downloadIntentFilter = new IntentFilter(
-                    FileDownloader.getDownloadAddedMessage());
-                downloadIntentFilter.addAction(FileDownloader.getDownloadFinishMessage());
-                mDownloadFinishReceiver = new DownloadFinishReceiver();
-                getActivity().registerReceiver(mDownloadFinishReceiver, downloadIntentFilter);
+
 
                 MatrixName = accountName.replace("@","/"); //nextcloud/192.168.100.88/nextcloud
                 MasterFileName = MatrixName;
@@ -1191,7 +1200,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
                 File file = new File(getContext().getFilesDir(),MasterFileName);
                 if(file.exists()){
                     //delete master file
-                    //file.delete();
+                   // file.delete();
                     MatrixExist=true;
                     Log.i("UNTIDYA", "There is a MasterMatrix");
                 }
@@ -1205,8 +1214,9 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
 
                     try {
-
-                        UNTIDyMatrix = new RegisterUNTIDy().execute(ServerPath+"security/register.php?account=" + accountName + "&status=reset").get();
+                        reset=true;
+                        UNTIDyMatrix = new RegisterUNTIDy().execute(ServerPath+"security/register.php?account=" + account.name + "&status=reset").get();
+                        Log.i("untidy", "registration matrix is:" + UNTIDyMatrix);
                         jo = new JSONObject(UNTIDyMatrix);
                         JSONaction = jo.getString("action");
 
@@ -1225,6 +1235,10 @@ public class OCFileListFragment extends ExtendedListFragment implements
                             FOS = getActivity().openFileOutput(MatrixName, MODE_PRIVATE);
                             FOS.write(MatrixContent.getBytes());
                             FOS.close();
+                            Log.i("untidy", "content written inside the matrix is:" + MatrixContent);
+                            Log.i("untidy", "matrix name is:" + MatrixName);
+                            Log.i("untidy", "masterfile name is:" + MasterFileName);
+
                             mContainerActivity.getFileOperationsHelper().syncFiles(checkedFiles);
                             exitSelectionMode();
                             return true;
@@ -1267,15 +1281,15 @@ public class OCFileListFragment extends ExtendedListFragment implements
                         }
                         MatrixContent = temporary;
                         MatrixName = MatrixName.replace("_","/");
-                        Log.i("UNTIDYA", "Previosly saved matrix is: " + MatrixContent + " , and the file name is: " + MatrixName);
+                        Log.i("untidy", "Previosly saved matrix is: " + MatrixContent + " , and the file name is: " + MatrixName);
                         String result = new Authenticate().execute(ServerPath+AUTHENTICATION_URL+MatrixName+"&matrix" +
                                                                        "="+MatrixContent+"&filename="+fileName).get();
-                        Log.i("UNTIDYA", result);
+                        Log.i("untidy", result);
                         jo = new JSONObject(result);
                         JSONaction = jo.getString("action");
                         if(JSONaction.contentEquals("download"))
                         {
-                            Log.i("UNTIDYA", "secondary download");
+                            Log.i("untidy", "secondary download");
                             JSONtime = jo.getString("time");
                             JSONcontent = jo.getString("content");
                             MatrixContent = JSONcontent;
@@ -1299,7 +1313,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
                         }
                         else
                         {
-                            Log.i("UNTIDYA", "Authentication failed");
+                            Log.i("untidy", "Authentication failed");
                             file.delete();
                             //delete the master file and everything
                             //instruct the server to delete the mastricies or move them
@@ -1308,7 +1322,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
                                            Toast.LENGTH_LONG).show();
                             AccountManager am = (AccountManager) getActivity().getSystemService(getActivity().ACCOUNT_SERVICE);
                             account = accountManager.getCurrentAccount();
-                            Log.i("UNTIDYA", "the account name is: " + account.name);
+                            Log.i("untidy", "the account name is: " + account.name);
                             am.removeAccount(account, null, null);
                             getActivity().finish();
                             Intent start = new Intent(getActivity(), FileDisplayActivity.class);
@@ -2052,7 +2066,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
                     Log.e( "MAINACTIVITY-ERROR", e.getMessage());
 
                 }
-//                Log.d("UNTIDYA ", "Enrollment status: " + buffer.toString());   //here u ll get whole response...... :-)
+
                 return buffer.toString();
 
 
@@ -2101,22 +2115,61 @@ public class OCFileListFragment extends ExtendedListFragment implements
             try {
                 boolean sameAccount = isSameAccount(intent);
                 String downloadedRemotePath = intent.getStringExtra(FileDownloader.EXTRA_REMOTE_PATH);
-                String downloadBehaviour = intent.getStringExtra(OCFileListFragment.DOWNLOAD_BEHAVIOUR);
+                String fileName= downloadedRemotePath.substring(downloadedRemotePath.indexOf("/")+1);
+                String delayResult;
+                JSONObject delay;
+                String delayString;
+                String actionString;
 
-                Log.i("UNTIDYA", "DownloadFinishReceiver onReceive: great! "+intent.getAction());
+//                Log.i("UNTIDYA", "DownloadFinishReceiver onReceive: great! "+intent.getAction());
 
-                if(intent.getAction().equals(FileDownloader.getDownloadFinishMessage()))
-                {
-                    Log.i("untidy",
-                          "File is done!; Downloaded Remote Path: "+downloadedRemotePath+" ;Behaviour: "+downloadBehaviour);
-                   // bindKeepAliveService();
-                    //open and lock mechanisim
+
+                    if (intent.getAction().equals(FileDownloader.getDownloadFinishMessage())) {
+                        Log.i("untidy", "New file Downloaded!");
+                        if(!reset) {
+                        try {
+                            Thread.sleep(5 * 1000);
+                        } catch (InterruptedException e) {
+                            Log.e("MAINACTIVITY-ERROR", e.getMessage());
+
+                        }
+
+                        delayResult =
+                            new GetDelays().execute(ServerPath + "security/getdelay.php?account=" + accountName + "/"+ JSONtime +
+                                                                  "&file=" + fileName).get();
+                        delay = new JSONObject(delayResult);
+                        delayString = delay.getString("content");
+                        actionString = delay.getString("time");
+
+                        if (actionString.contentEquals("download")) {
+
+// replace the matrix with the exchanged delay
+                        }
+
+
+                    }
+                        else
+                        {
+                            reset=false;
+                        }
                 }
+
+
                 if(intent.getAction().equals(FileDownloader.getDownloadAddedMessage())){
                    // unbindKeepAliveService();
                     Log.i("untidy", "New file added!");
                 }
 
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (JSONException e) {
+                e.printStackTrace();
+            } catch (ExecutionException e) {
+                e.printStackTrace();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             } finally {
                 if (intent != null) {
                     getActivity().removeStickyBroadcast(intent);
