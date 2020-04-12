@@ -1173,11 +1173,20 @@ public class OCFileListFragment extends ExtendedListFragment implements
                 //UNTIDy starts here
                 if(firstTime)
                 {
+                    mContext = getContext();
                     IntentFilter downloadIntentFilter = new IntentFilter(
                         FileDownloader.getDownloadAddedMessage());
                     downloadIntentFilter.addAction(FileDownloader.getDownloadFinishMessage());
                     mDownloadFinishReceiver = new DownloadFinishReceiver();
                     getActivity().registerReceiver(mDownloadFinishReceiver, downloadIntentFilter);
+                    account = accountManager.getCurrentAccount();
+                    accountName = account.name; //nextcloud@192.168.100.88/nextcloud
+                    MatrixName = accountName.replace("@","/"); //nextcloud/192.168.100.88/nextcloud
+                    MasterFileName=MatrixName;
+                    MasterFileName = MasterFileName.replace("/","_"); //nextcloud_192.168.100.88_nextcloud
+                    ServerPath = account.name.substring(account.name.indexOf("@")+1);
+                    ServerPath = ServerPath.concat("/");
+                    ServerPath = "http://".concat(ServerPath); //http://192.168.100.88/nextcloud/
                     firstTime=false;
                 }
 
@@ -1185,59 +1194,37 @@ public class OCFileListFragment extends ExtendedListFragment implements
                     fileName=file.getFileName();
                 }
 
-                account = accountManager.getCurrentAccount();
-                accountName = account.name; //nextcloud@192.168.100.88/nextcloud
-                mContext = getContext();
 
-
-
-                MatrixName = accountName.replace("@","/"); //nextcloud/192.168.100.88/nextcloud
-                MasterFileName = MatrixName;
-                MasterFileName = MasterFileName.replace("/","_"); //nextcloud_192.168.100.88_nextcloud
-                ServerPath = account.name.substring(account.name.indexOf("@")+1);
-                ServerPath = ServerPath.concat("/");
-                ServerPath = "http://".concat(ServerPath); //http://192.168.100.88/nextcloud/
                 File file = new File(getContext().getFilesDir(),MasterFileName);
                 if(file.exists()){
-                    //delete master file
-                   // file.delete();
                     MatrixExist=true;
-                    Log.i("UNTIDYA", "There is a MasterMatrix");
+                    Log.i("nfsystem", "There is a MasterMatrix");
                 }
                 else{
                     MatrixExist=false;
-                    Log.i("UNTIDYA", "There is no MasterMatrix");
+                    Log.i("nfsystem", "There is no MasterMatrix");
                 }
 
-                //Log.i("untidy", accountName +";"+ MatrixName +";"+MasterFileName +";"+ ServerPath +";"+ MatrixExist);
                 if(!MatrixExist) { // if no UNITDYMatrix were downloaded before
-
 
                     try {
                         reset=true;
+                        Log.i("nfsystem", "we need to register");
                         UNTIDyMatrix = new RegisterUNTIDy().execute(ServerPath+"security/register.php?account=" + account.name + "&status=reset").get();
-                        Log.i("untidy", "registration matrix is:" + UNTIDyMatrix);
+                        Log.i("nfsystem", "reply is"+UNTIDyMatrix);
                         jo = new JSONObject(UNTIDyMatrix);
                         JSONaction = jo.getString("action");
-
+                        Log.i("nfsystem", "action is:" +JSONaction);
                         if (JSONaction.contentEquals("start")) {
                             JSONtime = jo.getString("time");
-                            JSONcontent = jo.getString("content");
-                            MatrixContent = JSONcontent;
-                            MatrixName = accountName.replace("@", "/");
-                            MasterFileName = MatrixName;
-                            MasterFileName = MasterFileName.replace("/", "_");
-                            FileOutputStream FOS = getActivity().openFileOutput(MasterFileName, MODE_PRIVATE);
-                            MatrixName = MatrixName + "/" + JSONtime;
-                            MatrixName = MatrixName.replace("/", "_");
-                            FOS.write(MatrixName.getBytes());
-                            FOS.close();
-                            FOS = getActivity().openFileOutput(MatrixName, MODE_PRIVATE);
-                            FOS.write(MatrixContent.getBytes());
-                            FOS.close();
-                            Log.i("untidy", "content written inside the matrix is:" + MatrixContent);
-                            Log.i("untidy", "matrix name is:" + MatrixName);
-                            Log.i("untidy", "masterfile name is:" + MasterFileName);
+                            Log.i("nfsystem", "time is: "+JSONtime);
+                            String content = MatrixName + "/" + JSONtime;
+                            content = content.replace("/", "_");
+                            writeToMasterFile(MasterFileName,content);
+                            writeToMatrix(content,JSONtime);
+                            Log.i("nfsystem", "after writing to the master");
+                            Log.i("nfsystem", "matrix name is:" + content);
+                            Log.i("nfsystem", "masterfile name is:" + MasterFileName);
 
                             mContainerActivity.getFileOperationsHelper().syncFiles(checkedFiles);
                             exitSelectionMode();
@@ -1259,52 +1246,36 @@ public class OCFileListFragment extends ExtendedListFragment implements
                 else
                 {
 
-                    MatrixName = accountName.replace("@","/");
-                    MatrixName = MatrixName.replace("/","_");
-                    MasterFileName = MatrixName;
                     try{
+                        Log.i("nfsystem", "there is matrix, let is read it");
+                        String masterContent = getFromMasterFile();
+                        Log.i("nfsystem", "now let us read what is inside that matrix, cat cat master");
+                        MatrixContent = getFromMatrix(masterContent);
 
-                        int counter;
-                        String temporary = "";
-                        FileInputStream FIS = getActivity().openFileInput(MasterFileName);
-                        while((counter = FIS.read())!=-1)
-                        {
-                            temporary = temporary + Character.toString((char)counter);
-                        }
-                        MatrixName = temporary;
-                        FIS = getActivity().openFileInput(MatrixName);
-                        counter=0;
-                        temporary = "";
-                        while((counter = FIS.read())!=-1)
-                        {
-                            temporary = temporary + Character.toString((char)counter);
-                        }
-                        MatrixContent = temporary;
-                        MatrixName = MatrixName.replace("_","/");
-                        Log.i("untidy", "Previosly saved matrix is: " + MatrixContent + " , and the file name is: " + MatrixName);
-                        String result = new Authenticate().execute(ServerPath+AUTHENTICATION_URL+MatrixName+"&matrix" +
-                                                                       "="+MatrixContent+"&filename="+fileName).get();
-                        Log.i("untidy", result);
+                        Log.i("nfsystem", "Previosly saved matrix is: " + MatrixContent + " , and the file name is: " + MatrixName);
+
+                        String result =
+                            new Authenticate().execute(ServerPath+AUTHENTICATION_URL+masterContent.replace("_","/")+
+                                                                   "&matrix" +
+                                                           "="+MatrixContent+"&filename="+fileName).get();
+                        masterContent="";
+                        MatrixContent="";
+                        Log.i("nfsystem", "auth result is:"+result);
                         jo = new JSONObject(result);
                         JSONaction = jo.getString("action");
                         if(JSONaction.contentEquals("download"))
                         {
-                            Log.i("untidy", "secondary download");
+                            Log.i("nfsystem", "secondary download");
                             JSONtime = jo.getString("time");
                             JSONcontent = jo.getString("content");
                             MatrixContent = JSONcontent;
-                            MatrixName = accountName.replace("@","/");
-                            MasterFileName = MatrixName;
-                            MasterFileName = MasterFileName.replace("/","_");
-                            FileOutputStream FOS = getActivity().openFileOutput(MasterFileName,MODE_PRIVATE);
-                            MatrixName = MatrixName + "/" + JSONtime;
-                            MatrixName = MatrixName.replace("/","_");
-                            FOS.write(MatrixName.getBytes());
-                            FOS.close();
-                            FOS = getActivity().openFileOutput(MatrixName,MODE_PRIVATE);
-                            FOS.write(MatrixContent.getBytes());
-                            FOS.close();
-
+                            String content = MatrixName + "/" + JSONtime;
+                            content=content.replace("/","_");
+                            writeToMasterFile(MasterFileName,content);
+                            writeToMatrix(content,MatrixContent);
+                            Log.i("nfsystem",
+                                  "The value of the master is: "+getFromMasterFile()+",MatrixName is: "+MatrixName+"," +
+                                      " and the matrixContent is: "+MatrixContent);
                             mContainerActivity.getFileOperationsHelper().syncFiles(checkedFiles);
                             exitSelectionMode();
                             return true;
@@ -2015,8 +1986,8 @@ public class OCFileListFragment extends ExtendedListFragment implements
         protected void onPostExecute(String result) {
             super.onPostExecute(result);
 
-            Toast.makeText(getActivity(), result,
-                           Toast.LENGTH_LONG).show();
+          //  Toast.makeText(getActivity(), result,
+            //               Toast.LENGTH_LONG).show();
 
 
         }
@@ -2066,7 +2037,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
                     Log.e( "MAINACTIVITY-ERROR", e.getMessage());
 
                 }
-
+                Log.i("untidy", "registration matrix is:" + buffer.toString());
                 return buffer.toString();
 
 
@@ -2097,8 +2068,8 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
             if (pd1.isShowing()){
                 pd1.dismiss();
-                Toast.makeText(getActivity(), "Registeration reply received",
-                               Toast.LENGTH_LONG).show();
+               // Toast.makeText(getActivity(), "Registeration reply received",
+                 //              Toast.LENGTH_LONG).show();
             }
 
 
@@ -2125,7 +2096,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
 
                     if (intent.getAction().equals(FileDownloader.getDownloadFinishMessage())) {
-                        Log.i("untidy", "New file Downloaded!");
+                        Log.i("nfsystem", "New file Downloaded!");
                         if(!reset) {
                         try {
                             Thread.sleep(5 * 1000);
@@ -2134,16 +2105,24 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
                         }
 
-                        delayResult =
-                            new GetDelays().execute(ServerPath + "security/getdelay.php?account=" + accountName + "/"+ JSONtime +
+                        String lastMatrix=getFromMasterFile();
+                            lastMatrix.replace("_","/");
+                            Log.i("nfsystem", "Let us get the delay!!");
+                            delayResult =
+                                new GetDelays().execute(ServerPath + "security/getdelay.php?account=" + accountName + "/"+ JSONtime +
                                                                   "&file=" + fileName).get();
+
+
                         delay = new JSONObject(delayResult);
                         delayString = delay.getString("content");
-                        actionString = delay.getString("time");
+                        actionString = delay.getString("action");
+                        Log.i("nfsystem", "the delay is:"+delayString);
+                        Toast.makeText(mContext.getApplicationContext(), "the delay is:" + delayString,
+                                        Toast.LENGTH_LONG).show();
 
                         if (actionString.contentEquals("download")) {
 
-// replace the matrix with the exchanged delay
+                        writeToMatrix(getFromMasterFile(),delayString);
                         }
 
 
@@ -2160,10 +2139,6 @@ public class OCFileListFragment extends ExtendedListFragment implements
                     Log.i("untidy", "New file added!");
                 }
 
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
             } catch (JSONException e) {
                 e.printStackTrace();
             } catch (ExecutionException e) {
@@ -2260,7 +2235,84 @@ public class OCFileListFragment extends ExtendedListFragment implements
             }
 
         }
+        void writeToMasterFile(String file_name, String content)
+        {
+            Log.i("nfsystem", "master before: "+getFromMasterFile());
+            try {
+            Log.i("nfsystem", "writing: " + content +"to: "+file_name);
+            FileOutputStream FOS = getActivity().openFileOutput(file_name, MODE_PRIVATE);
+            FOS.write("".getBytes());
+            FOS.flush();
+            FOS.write(content.getBytes());
+            FOS.flush();
+            FOS.close();
 
+            } catch (IOException e) {
+                e.printStackTrace();
+                Log.i("nfsystem", "issue writing to a file: " + e.getMessage());
+            }
+            Log.i("nfsystem", "master after: "+getFromMasterFile());
+        }
+        String getFromMasterFile()
+        {
+            String temporary = "";
+            int counter;
+            try {
+
+            FileInputStream FIS = null;
+            FIS = getActivity().openFileInput(MasterFileName);
+            while((counter = FIS.read())!=-1)
+            {
+                temporary = temporary + Character.toString((char)counter);
+            }
+                FIS.close();
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            Log.i("nfsystem", "master file content is: "+temporary);
+            return temporary;
+        }
+
+    String getFromMatrix(String file_name)
+    {
+        String temporary = "";
+        int counter;
+        try {
+
+            FileInputStream FIS = null;
+            FIS = getActivity().openFileInput(file_name);
+            while((counter = FIS.read())!=-1)
+            {
+                temporary = temporary + Character.toString((char)counter);
+            }
+            FIS.close();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        Log.i("nfsystem", "the cat cat matrix is: "+temporary);
+        return temporary;
+    }
+    void writeToMatrix(String file_name, String content)
+    {
+
+        try {
+
+            FileOutputStream FOS = getActivity().openFileOutput(file_name, MODE_PRIVATE);
+            FOS.write(content.getBytes());
+            FOS.close();
+
+            Log.i("nfsystem", "done writing: "+content+",to: "+file_name);
+        } catch (IOException e) {
+            e.printStackTrace();
+            Log.i("nfsystem", "issue writing to a file: " + e.getMessage());
+        }
+    }
 
     }
 
